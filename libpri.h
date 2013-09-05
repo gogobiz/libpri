@@ -357,6 +357,10 @@
 #define PRI_NSF_CALL_REDIRECTION_SERVICE       0xF7
 
 typedef struct q931_call q931_call;
+ 
+/*===== arinc-patch-begin =========================================================*/
+typedef struct arinc_invocation arinc_invocation;
+/*===== arinc-patch-end   =========================================================*/	
 
 /* Name character set enumeration values */
 #define PRI_CHAR_SET_UNKNOWN				0
@@ -1065,20 +1069,24 @@ struct pri_subcommands {
 typedef struct pri_event_generic {
 	/* Events with no additional information fall in this category */
 	int e;
+        struct pri *pri;
 } pri_event_generic;
 
 typedef struct pri_event_error {
 	int e;
+        struct pri *pri;
 	char err[256];
 } pri_event_error;
 
 typedef struct pri_event_restart {
 	int e;
+        struct pri *pri;
 	int channel;
 } pri_event_restart;
 
 typedef struct pri_event_ringing {
 	int e;
+        struct pri *pri;
 	int channel;
 	int cref;
 	int progress;
@@ -1090,6 +1098,7 @@ typedef struct pri_event_ringing {
 
 typedef struct pri_event_answer {
 	int e;
+        struct pri *pri;
 	int channel;
 	int cref;
 	int progress;
@@ -1102,6 +1111,7 @@ typedef struct pri_event_answer {
 /*! Deprecated replaced by struct pri_event_facility. */
 typedef struct pri_event_facname {
 	int e;
+        struct pri *pri;
 	char callingname[256];
 	char callingnum[256];
 	int channel;
@@ -1113,6 +1123,7 @@ typedef struct pri_event_facname {
 
 struct pri_event_facility {
 	int e;
+        struct pri *pri;
 	char callingname[256];		/*!< Deprecated, preserved for struct pri_event_facname compatibility */
 	char callingnum[256];		/*!< Deprecated, preserved for struct pri_event_facname compatibility */
 	int channel;
@@ -1133,6 +1144,7 @@ struct pri_event_facility {
 #define PRI_CALLINGPLANRDNIS
 typedef struct pri_event_ring {
 	int e;
+        struct pri *pri;
 	int channel;				/* Channel requested */
 	int callingpres;			/* Presentation of Calling CallerID */
 	int callingplanani;			/* Dialing plan of Calling entity ANI */
@@ -1170,6 +1182,7 @@ typedef struct pri_event_ring {
 
 typedef struct pri_event_hangup {
 	int e;
+        struct pri *pri;
 	int channel;				/* Channel requested */
 	int cause;
 	int cref;
@@ -1193,12 +1206,14 @@ typedef struct pri_event_hangup {
 
 typedef struct pri_event_restart_ack {
 	int e;
+        struct pri *pri;
 	int channel;
 } pri_event_restart_ack;
 
 #define PRI_PROGRESS_CAUSE
 typedef struct pri_event_proceeding {
 	int e;
+        struct pri *pri;
 	int channel;
 	int cref;
 	int progress;
@@ -1210,6 +1225,7 @@ typedef struct pri_event_proceeding {
 
 typedef struct pri_event_setup_ack {
 	int e;
+        struct pri *pri;
 	int channel;
 	q931_call *call;
 	struct pri_subcommands *subcmds;
@@ -1218,6 +1234,7 @@ typedef struct pri_event_setup_ack {
 
 typedef struct pri_event_notify {
 	int e;
+        struct pri *pri;
 	int channel;
 	int info;
 	struct pri_subcommands *subcmds;
@@ -1226,26 +1243,48 @@ typedef struct pri_event_notify {
 
 typedef struct pri_event_keypad_digit {
 	int e;
+        struct pri *pri;
 	int channel;
 	q931_call *call;
 	char digits[64];
 	struct pri_subcommands *subcmds;
 } pri_event_keypad_digit;
 
+/* analogous to pri_event_ring  */
+typedef struct pri_eqmtctrl_event_request {
+	int e;
+ 	struct pri *pri;
+	int iref;
+	int cause;
+	arinc_invocation *invoke;	
+} pri_eqmtctrl_event_request;
+
+/* analogous to pri_event_hangup  */
+typedef struct pri_eqmtctrl_event_response {
+	int e;
+ 	struct pri *pri;
+	int iref;
+	int cause;
+	arinc_invocation *invoke;
+} pri_eqmtctrl_event_response;
+
 typedef struct pri_event_service {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	int changestatus;
 } pri_event_service;
 
 typedef struct pri_event_service_ack {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	int changestatus;
 } pri_event_service_ack;
 
 struct pri_event_hold {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	q931_call *call;
 	struct pri_subcommands *subcmds;
@@ -1253,6 +1292,7 @@ struct pri_event_hold {
 
 struct pri_event_hold_ack {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	q931_call *call;
 	struct pri_subcommands *subcmds;
@@ -1260,6 +1300,7 @@ struct pri_event_hold_ack {
 
 struct pri_event_hold_rej {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	q931_call *call;
 	int cause;
@@ -1268,6 +1309,7 @@ struct pri_event_hold_rej {
 
 struct pri_event_retrieve {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	q931_call *call;
 	int flexible;				/* Are we flexible with our channel selection? */
@@ -1276,6 +1318,7 @@ struct pri_event_retrieve {
 
 struct pri_event_retrieve_ack {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	q931_call *call;
 	struct pri_subcommands *subcmds;
@@ -1283,6 +1326,7 @@ struct pri_event_retrieve_ack {
 
 struct pri_event_retrieve_rej {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	q931_call *call;
 	int cause;
@@ -1291,6 +1335,7 @@ struct pri_event_retrieve_rej {
 
 struct pri_event_connect_ack {
 	int e;
+ 	struct pri *pri;
 	int channel;
 	q931_call *call;
 	struct pri_subcommands *subcmds;
@@ -1311,6 +1356,8 @@ typedef union {
 	pri_event_setup_ack   setup_ack;	/* SETUP_ACKNOWLEDGE structure */
 	pri_event_notify notify;		/* Notification */
 	pri_event_keypad_digit digit;			/* Digits that come during a call */
+        pri_eqmtctrl_event_request  request;    /* REQUEST  */
+        pri_eqmtctrl_event_response response;   /* RESPONSE */
 	pri_event_service service;				/* service message */
 	pri_event_service_ack service_ack;		/* service acknowledgement message */
 	struct pri_event_facility facility;
@@ -2239,6 +2286,9 @@ enum PRI_TIMERS_AND_COUNTERS {
 	PRI_TIMER_T321,
 	PRI_TIMER_T322,
 
+	PRI_TIMER_TA01,
+	PRI_TIMER_TA10,
+
 	PRI_TIMER_TM20,	/*!< Maximum time awaiting XID response */
 	PRI_TIMER_NM20,	/*!< Number of XID retransmits */
 
@@ -2278,6 +2328,12 @@ enum PRI_TIMERS_AND_COUNTERS {
 	/* Must be last in the enum list */
 	PRI_MAX_TIMERS
 };
+
+//int q921_transmit_iframe(struct pri *pri, void *buf, int len, int cr);
+
+void arinc_satcom_init(int x);
+//extern void arinc_set_test(int x);
+//extern int arinc_get_test(void);
 
 /* Get PRI version */
 const char *pri_get_version(void);
