@@ -159,7 +159,7 @@ install: $(STATIC_LIBRARY) $(DYNAMIC_LIBRARY)
 	mkdir -p $(INSTALL_PREFIX)$(INSTALL_BASE)/include
 ifneq (${OSARCH},SunOS)
 	install -m 644 libpri.h $(INSTALL_PREFIX)$(INSTALL_BASE)/include
-	install -m 644 arinc/libarinc.h $(INSTALL_PREFIX)$(INSTALL_BASE)/include
+#	install -m 644 arinc/libarinc.h $(INSTALL_PREFIX)$(INSTALL_BASE)/include
 	install -m 755 $(DYNAMIC_LIBRARY) $(INSTALL_PREFIX)$(libdir)
 	#if [ -x /usr/sbin/sestatus ] && ( /usr/sbin/sestatus | grep "SELinux status:" | grep -q "enabled"); then /sbin/restorecon -v $(INSTALL_PREFIX)$(libdir)/$(DYNAMIC_LIBRARY); fi
 	( cd $(INSTALL_PREFIX)$(libdir) ; ln -sf $(DYNAMIC_LIBRARY) libpri.so)
@@ -167,7 +167,7 @@ ifneq (${OSARCH},SunOS)
 	if test $$(id -u) = 0; then $(LDCONFIG) $(LDCONFIG_FLAGS) $(INSTALL_PREFIX)$(libdir); fi
 else
 	install -f $(INSTALL_PREFIX)$(INSTALL_BASE)/include -m 644 libpri.h
-	install -f $(INSTALL_PREFIX)$(INSTALL_BASE)/include -m 644 arinc/libarinc.h
+#	install -f $(INSTALL_PREFIX)$(INSTALL_BASE)/include -m 644 arinc/libarinc.h
 	install -f $(INSTALL_PREFIX)$(libdir) -m 755 $(DYNAMIC_LIBRARY)
 	( cd $(INSTALL_PREFIX)$(libdir) ; ln -sf $(DYNAMIC_LIBRARY) libpri.so)
 	install -f $(INSTALL_PREFIX)$(libdir) -m 644 $(STATIC_LIBRARY)
