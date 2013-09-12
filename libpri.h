@@ -248,6 +248,12 @@
 
 /* Transmit capabilities */
 #define PRI_TRANS_CAP_SPEECH					0x0
+// [arinc patch: start]
+#define ARINC_PRI_TRANS_CAP_SPEECH				0x01
+#define ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_FAX	0x02
+#define ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_MODEM	0x03
+#define ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_TDD	0x04
+// [arinc patch: end]
 #define PRI_TRANS_CAP_DIGITAL					0x08
 #define PRI_TRANS_CAP_RESTRICTED_DIGITAL		0x09
 #define PRI_TRANS_CAP_3_1K_AUDIO				0x10

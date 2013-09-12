@@ -59,9 +59,13 @@
 #define Q921_TEI_GR303_TMC_CALLPROC		0
 #define Q921_TEI_AUTO_FIRST				64
 #define Q921_TEI_AUTO_LAST				126
-
-#define Q921_SAPI_CALL_CTRL		0
-#define Q921_SAPI_GR303_EOC		1
+#define Q921_SAPI_CALL_CTRL				0
+// [arinc patch: start]
+// SAPI 2
+// SAPI is 2 for equipment control
+#define Q921_SAPI_EQUIPMENT_CTRL		2
+// [arinc patch: end]
+#define Q921_SAPI_GR303_EOC				1
 #define Q921_SAPI_GR303_TMC_SWITCHING	1
 #define Q921_SAPI_GR303_TMC_CALLPROC	0
 

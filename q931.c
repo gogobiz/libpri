@@ -1701,6 +1701,12 @@ static char *cap2str(int mode)
 {
 	static struct msgtype modes[] = {
 		{ PRI_TRANS_CAP_SPEECH, "Speech" },
+		// [arinc patch: start]
+		{ ARINC_PRI_TRANS_CAP_SPEECH, "Speech" },
+		{ ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_FAX, "Circuit Mode FAX" },
+		{ ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_MODEM, "Circuit Mode modem" },
+		{ ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_TDD, "Circuit Mode TDD" },
+		// [arinc patch: end]
 		{ PRI_TRANS_CAP_DIGITAL, "Unrestricted digital information" },
 		{ PRI_TRANS_CAP_RESTRICTED_DIGITAL, "Restricted digital information" },
 		{ PRI_TRANS_CAP_3_1K_AUDIO, "3.1kHz audio" },
