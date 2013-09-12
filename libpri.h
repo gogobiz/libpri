@@ -1256,7 +1256,8 @@ typedef struct pri_event_keypad_digit {
 	struct pri_subcommands *subcmds;
 } pri_event_keypad_digit;
 
-/* analogous to pri_event_ring  */
+// [arinc patch: start]
+// EQUIPMENT CTRL
 typedef struct pri_eqmtctrl_event_request {
 	int e;
  	struct pri *pri;
@@ -1273,6 +1274,8 @@ typedef struct pri_eqmtctrl_event_response {
 	int cause;
 	arinc_invocation *invoke;
 } pri_eqmtctrl_event_response;
+
+// [arinc patch: end]
 
 typedef struct pri_event_service {
 	int e;
@@ -1362,8 +1365,8 @@ typedef union {
 	pri_event_setup_ack   setup_ack;	/* SETUP_ACKNOWLEDGE structure */
 	pri_event_notify notify;		/* Notification */
 	pri_event_keypad_digit digit;			/* Digits that come during a call */
-        pri_eqmtctrl_event_request  request;    /* REQUEST  */
-        pri_eqmtctrl_event_response response;   /* RESPONSE */
+        pri_eqmtctrl_event_request  request;    /* Equipment request  */
+        pri_eqmtctrl_event_response response;   /* Equipment response */
 	pri_event_service service;				/* service message */
 	pri_event_service_ack service_ack;		/* service acknowledgement message */
 	struct pri_event_facility facility;

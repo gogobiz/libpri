@@ -535,6 +535,11 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 	switch (switchtype) {
 	case PRI_SWITCH_GR303_EOC:
 	case PRI_SWITCH_GR303_TMC:
+	// [arinc patch: start]
+	// EQUIPMENT CTRL
+	// Need to rename this to PRI_SWITCH_ARINC
+	case PRI_SWITCH_EUROISDN_E1:
+	// [arinc patch: end]
 		create_dummy_call = 0;
 		break;
 	default:
@@ -606,6 +611,20 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 			return NULL;
 		}
 		break;
+
+	// [arinc patch: start]
+	// EQUIPMENT CTRL
+	// Watch for the equipment protocol
+	// Need to rename this to PRI_SWITCH_ARINC
+	case PRI_SWITCH_EUROISDN_E1:
+		ctrl->protodisc = ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR;
+		pri_link_init(ctrl, &ctrl->link, Q921_SAPI_EQUIPMENT_CTRL, Q921_TEI_EQUIPMENT_CTRL);
+		if (!ctrl->link.next) {
+			pri_ctrl_destroy(ctrl);
+			return NULL;
+		}
+		break;
+	// [arinc patch: end]	
 	default:
 		ctrl->protodisc = Q931_PROTOCOL_DISCRIMINATOR;
 		pri_link_init(ctrl, &ctrl->link,

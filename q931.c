@@ -4980,6 +4980,10 @@ static char *disc2str(int disc)
 {
 	static struct msgtype discs[] = {
 		{ Q931_PROTOCOL_DISCRIMINATOR, "Q.931" },
+		// [arinc patch: start]
+		// EQUIPMENT CTRL
+		{ ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR, "ARINC Equipment Control" },
+		// [arinc patch: end]
 		{ GR303_PROTOCOL_DISCRIMINATOR, "GR-303" },
 		{ MAINTENANCE_PROTOCOL_DISCRIMINATOR_1, "AT&T Maintenance" },
 		{ MAINTENANCE_PROTOCOL_DISCRIMINATOR_2, "New AT&T Maintenance" },

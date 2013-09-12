@@ -80,6 +80,11 @@ typedef struct q931_ie {
 /* National Maintenance Protocol Discriminator */
 #define MAINTENANCE_PROTOCOL_DISCRIMINATOR_2 0x43
 
+// [arinc patch: start]
+// EQUIPMENT CTRL
+#define ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR 0x42
+// [arinc patch: end]
+
 /* Q.931 / National ISDN Message Types */
 
 /*! Send this facility APDU on the next message to go out. */

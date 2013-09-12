@@ -64,6 +64,7 @@
 // SAPI 2
 // SAPI is 2 for equipment control
 #define Q921_SAPI_EQUIPMENT_CTRL		2
+#define Q921_TEI_EQUIPMENT_CTRL			0
 // [arinc patch: end]
 #define Q921_SAPI_GR303_EOC				1
 #define Q921_SAPI_GR303_TMC_SWITCHING	1

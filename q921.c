@@ -3080,6 +3080,15 @@ static pri_event *__q921_receive(struct pri *ctrl, q921_h *h, int len)
 		return q921_mdl_receive(ctrl, &h->u, len);
 	}
 
+	// [arinc patch: start]
+	// EQUIPMENT CTRL
+	// Capture the messages
+	if (h->h.sapi == Q921_SAPI_EQUIPMENT_CTRL) {
+		pri_message(ctrl, "Received an Equipment Control message");
+		// PROTOTYPE STUB return q921_receive_ECL(ctrl, &h->u, len);
+	}
+	// [arinc patch: en
+
 	if (h->h.tei == Q921_TEI_GROUP && h->h.sapi != Q921_SAPI_CALL_CTRL) {
 		pri_error(ctrl, "Do not handle group messages to services other than MDL or CALL CTRL\n");
 		return NULL;
