@@ -27,6 +27,8 @@
  * terms granted here.
  */
 
+#define DEBUG_LEVEL	PRI_DEBUG_ALL
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -535,11 +537,6 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 	switch (switchtype) {
 	case PRI_SWITCH_GR303_EOC:
 	case PRI_SWITCH_GR303_TMC:
-	// [arinc patch: start]
-	// EQUIPMENT CTRL
-	// Need to rename this to PRI_SWITCH_ARINC
-	case PRI_SWITCH_EUROISDN_E1:
-	// [arinc patch: end]
 		create_dummy_call = 0;
 		break;
 	default:
@@ -618,11 +615,11 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 	// Need to rename this to PRI_SWITCH_ARINC
 	case PRI_SWITCH_EUROISDN_E1:
 		ctrl->protodisc = ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR;
-		pri_link_init(ctrl, &ctrl->link, Q921_SAPI_EQUIPMENT_CTRL, Q921_TEI_EQUIPMENT_CTRL);
-		if (!ctrl->link.next) {
-			pri_ctrl_destroy(ctrl);
-			return NULL;
-		}
+		// pri_link_init(ctrl, &ctrl->link, Q921_SAPI_EQUIPMENT_CTRL, tei);
+                pri_message(ctrl, "  PRI EUROISDN WITH TEI Q921 GROUP SET TO %i\n", Q921_TEI_GROUP);
+		pri_link_init(ctrl, &ctrl->link,
+			(tei == Q921_TEI_GROUP) ? Q921_SAPI_EQUIPMENT_CTRL : Q921_SAPI_CALL_CTRL,
+                        tei);		
 		break;
 	// [arinc patch: end]	
 	default:
