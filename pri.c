@@ -608,20 +608,6 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 			return NULL;
 		}
 		break;
-
-	// [arinc patch: start]
-	// EQUIPMENT CTRL
-	// Watch for the equipment protocol
-	// Need to rename this to PRI_SWITCH_ARINC
-	case PRI_SWITCH_EUROISDN_E1:
-		ctrl->protodisc = ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR;
-		// pri_link_init(ctrl, &ctrl->link, Q921_SAPI_EQUIPMENT_CTRL, tei);
-                pri_message(ctrl, "  PRI EUROISDN WITH TEI Q921 GROUP SET TO %i\n", Q921_TEI_GROUP);
-		pri_link_init(ctrl, &ctrl->link,
-			(tei == Q921_TEI_GROUP) ? Q921_SAPI_EQUIPMENT_CTRL : Q921_SAPI_CALL_CTRL,
-                        tei);		
-		break;
-	// [arinc patch: end]	
 	default:
 		ctrl->protodisc = Q931_PROTOCOL_DISCRIMINATOR;
 		pri_link_init(ctrl, &ctrl->link,
