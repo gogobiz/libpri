@@ -4597,15 +4597,23 @@ struct q931_call *q931_new_call(struct pri *ctrl)
 
 		/* Next call reference. */
 		++ctrl->cref;
-		if (!ctrl->bri) {
-			if (ctrl->cref > 32767) {
-				ctrl->cref = 1;
-			}
-		} else {
-			if (ctrl->cref > 127) {
-				ctrl->cref = 1;
-			}
+		// [arinc patch: start]
+		// Call reference should be 1
+		
+		if(ctrl->cref > 127) {
+			ctrl->cref = 1;
 		}
+
+		// if (!ctrl->bri) {
+		// 	if (ctrl->cref > 32767) {
+		// 		ctrl->cref = 1;
+		// 	}
+		// } else {
+		// 	if (ctrl->cref > 127) {
+		// 		ctrl->cref = 1;
+		// 	}
+		// }
+		// [arinc patch: end]
 
 		/* Is the call reference value in use? */
 		for (cur = *ctrl->callpool; cur; cur = cur->next) {
