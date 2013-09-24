@@ -247,8 +247,10 @@
 #define PRI_CAUSE_INTERWORKING					127	/* !Q.SIG */
 
 /* Transmit capabilities */
-#define PRI_TRANS_CAP_SPEECH					0x01
 // [arinc patch: start]
+// Bearer capability speech is 1
+// #define PRI_TRANS_CAP_SPEECH					0x0
+#define PRI_TRANS_CAP_SPEECH					0x01
 #define ARINC_PRI_TRANS_CAP_SPEECH				0x01
 #define ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_FAX	0x02
 #define ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_MODEM	0x03
