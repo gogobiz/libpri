@@ -3084,7 +3084,8 @@ static pri_event *__q921_receive(struct pri *ctrl, q921_h *h, int len)
 	// EQUIPMENT CTRL
 	// Capture the messages
 	if (h->h.sapi == Q921_SAPI_EQUIPMENT_CTRL) {
-		pri_message(ctrl, "Received an Equipment Control message");
+		pri_message(ctrl, "Received an Equipment Control message\n");
+		q921_dump(ctrl, h, len, ctrl->debug & PRI_DEBUG_Q921_RAW, 0);
 		// PROTOTYPE STUB return q921_receive_ECL(ctrl, &h->u, len);
 	}
 	// [arinc patch: en
