@@ -1702,10 +1702,10 @@ static char *cap2str(int mode)
 	static struct msgtype modes[] = {
 		{ PRI_TRANS_CAP_SPEECH, "Speech" },
 		// [arinc patch: start]
-		{ ARINC_PRI_TRANS_CAP_SPEECH, "Speech" },
-		{ ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_FAX, "Circuit Mode FAX" },
-		{ ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_MODEM, "Circuit Mode modem" },
-		{ ARINC_PRI_TRANS_CAP_CIRCUIT_MODE_TDD, "Circuit Mode TDD" },
+		{ PRI_TRANS_CAP_ARINC_SPEECH, "Speech" },
+		{ PRI_TRANS_CAP_ARINC_CIRCUIT_MODE_FAX, "Circuit Mode FAX" },
+		{ PRI_TRANS_CAP_ARINC_CIRCUIT_MODE_MODEM, "Circuit Mode modem" },
+		{ PRI_TRANS_CAP_ARINC_CIRCUIT_MODE_TDD, "Circuit Mode TDD" },
 		// [arinc patch: end]
 		{ PRI_TRANS_CAP_DIGITAL, "Unrestricted digital information" },
 		{ PRI_TRANS_CAP_RESTRICTED_DIGITAL, "Restricted digital information" },
@@ -4597,24 +4597,13 @@ struct q931_call *q931_new_call(struct pri *ctrl)
 
 		/* Next call reference. */
 		++ctrl->cref;
-		// [arinc patch: start]
-		// Call reference should be 1
-		
-		if(ctrl->cref > 127) {
-			ctrl->cref = 1;
+		if (!ctrl->bri) {
+			if (ctrl->cref > 32767) {
+				ctrl->cref = 1;
+			}
+		} else if (ctrl->cref > 127) {
+				ctrl->cref = 1;
 		}
-
-		// if (!ctrl->bri) {
-		// 	if (ctrl->cref > 32767) {
-		// 		ctrl->cref = 1;
-		// 	}
-		// } else {
-		// 	if (ctrl->cref > 127) {
-		// 		ctrl->cref = 1;
-		// 	}
-		// }
-		// [arinc patch: end]
-
 		/* Is the call reference value in use? */
 		for (cur = *ctrl->callpool; cur; cur = cur->next) {
 			if (cur->cr == cref) {
