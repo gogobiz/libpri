@@ -45,7 +45,7 @@
 
 #define PRI_BIT(a_bit)		(1UL << (a_bit))
 #define PRI_ALL_SWITCHES	0xFFFFFFFF
-#define PRI_ETSI_SWITCHES	(PRI_BIT(PRI_SWITCH_EUROISDN_E1) | PRI_BIT(PRI_SWITCH_EUROISDN_T1))
+#define PRI_ETSI_SWITCHES	(PRI_BIT(PRI_SWITCH_EUROISDN_E1) | PRI_BIT(PRI_SWITCH_EUROISDN_T1) | PRI_BIT(PRI_SWITCH_ARINC))
 
 struct pri_timer_table {
 	const char *name;
@@ -152,6 +152,8 @@ char *pri_switch2str(int sw)
 		return "GR303 TMC";
 	case PRI_SWITCH_QSIG:
 		return "Q.SIG switch";
+	case PRI_SWITCH_ARINC:
+		return "ARINC 746"
 	default:
 		return "Unknown switchtype";
 	}
@@ -336,6 +338,7 @@ static unsigned long pri_display_options_send_default(struct pri *ctrl)
 		break;
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (ctrl->localtype == PRI_CPE) {
 			flags = PRI_DISPLAY_OPTION_BLOCK;
 			break;
@@ -1106,6 +1109,7 @@ int pri_connected_line_update(struct pri *ctrl, q931_call *call, const struct pr
 		switch (ctrl->switchtype) {
 		case PRI_SWITCH_EUROISDN_E1:
 		case PRI_SWITCH_EUROISDN_T1:
+		case PRI_SWITCH_ARINC:
 			if (BRI_NT_PTMP(ctrl)) {
 				/*
 				 * NT PTMP mode
@@ -1151,6 +1155,7 @@ int pri_connected_line_update(struct pri *ctrl, q931_call *call, const struct pr
 		switch (ctrl->switchtype) {
 		case PRI_SWITCH_EUROISDN_E1:
 		case PRI_SWITCH_EUROISDN_T1:
+		case PRI_SWITCH_ARINC:
 			if (BRI_NT_PTMP(ctrl)) {
 				/*
 				 * NT PTMP mode
@@ -1275,6 +1280,7 @@ int pri_redirecting_update(struct pri *ctrl, q931_call *call, const struct pri_p
 		switch (ctrl->switchtype) {
 		case PRI_SWITCH_EUROISDN_E1:
 		case PRI_SWITCH_EUROISDN_T1:
+		case PRI_SWITCH_ARINC:
 			if (PTMP_MODE(ctrl)) {
 				if (NT_MODE(ctrl)) {
 					/*
@@ -1447,6 +1453,7 @@ int pri_channel_bridge(q931_call *call1, q931_call *call2)
 		break;
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (etsi_initiate_transfer(call1->pri, call1, call2)) {
 			return -1;
 		}

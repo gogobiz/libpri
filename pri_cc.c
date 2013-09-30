@@ -526,6 +526,7 @@ static int rose_cc_available_encode(struct pri *ctrl, q931_call *call, struct pr
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			end =
 				enc_etsi_ptmp_cc_available(ctrl, buffer, buffer + sizeof(buffer),
@@ -1358,6 +1359,7 @@ static int rose_remote_user_free_encode(struct pri *ctrl, q931_call *call, struc
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			end =
 				enc_etsi_ptmp_remote_user_free(ctrl, buffer, buffer + sizeof(buffer),
@@ -1456,6 +1458,7 @@ static int send_remote_user_free(struct pri *ctrl, struct pri_cc_record *cc_reco
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		call = cc_record->signaling;
 		retval = rose_remote_user_free_encode(ctrl, call, cc_record, Q931_FACILITY);
 		if (!retval) {
@@ -1566,6 +1569,7 @@ static int rose_cc_suspend_encode(struct pri *ctrl, q931_call *call, int msgtype
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end =
 			enc_etsi_ptp_cc_operation(ctrl, buffer, buffer + sizeof(buffer),
 				ROSE_ETSI_CCBS_T_Suspend);
@@ -1604,6 +1608,7 @@ static int send_cc_suspend(struct pri *ctrl, struct pri_cc_record *cc_record)
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		call = cc_record->signaling;
 		retval = rose_cc_suspend_encode(ctrl, call, Q931_FACILITY);
 		if (!retval) {
@@ -1658,6 +1663,7 @@ static int rose_cc_resume_encode(struct pri *ctrl, q931_call *call, int msgtype)
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end =
 			enc_etsi_ptp_cc_operation(ctrl, buffer, buffer + sizeof(buffer),
 				ROSE_ETSI_CCBS_T_Resume);
@@ -1834,6 +1840,7 @@ static int rose_cc_recall_encode(struct pri *ctrl, q931_call *call, struct pri_c
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			end =
 				enc_etsi_ptmp_cc_recall(ctrl, buffer, buffer + sizeof(buffer), cc_record);
@@ -2923,6 +2930,7 @@ static void pri_cc_act_start_t_supervision(struct pri *ctrl, struct pri_cc_recor
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			/* ETSI PTMP mode. */
 			timer_id = cc_record->is_ccnr ? PRI_TIMER_T_CCNR2 : PRI_TIMER_T_CCBS2;
@@ -3002,6 +3010,7 @@ static void pri_cc_act_start_t_recall(struct pri *ctrl, struct pri_cc_record *cc
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		duration = ctrl->timers[PRI_TIMER_T_CCBS3];
 		break;
 	case PRI_SWITCH_QSIG:
@@ -3420,6 +3429,7 @@ static int rose_cc_request(struct pri *ctrl, q931_call *call, struct pri_cc_reco
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			end =
 				enc_etsi_ptmp_cc_request(ctrl, buffer, buffer + sizeof(buffer),
@@ -6745,6 +6755,7 @@ int pri_cc_event(struct pri *ctrl, q931_call *call, struct pri_cc_record *cc_rec
 		break;
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			if (cc_record->is_agent) {
 				cc_fsm = pri_cc_fsm_ptmp_agent;
@@ -6841,6 +6852,7 @@ long pri_cc_available(struct pri *ctrl, q931_call *call)
 		break;
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			int linkage_id;
 
@@ -7000,6 +7012,7 @@ int pri_cc_req(struct pri *ctrl, long cc_id, int mode)
 		break;
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			/* ETSI PTMP */
 			if (pri_cc_event(ctrl, cc_record->signaling, cc_record, CC_EVENT_CC_REQUEST)) {
@@ -7536,6 +7549,7 @@ int pri_cc_req_rsp(struct pri *ctrl, long cc_id, int status)
 		break;
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			if (!pri_cc_req_rsp_ptmp(ctrl, cc_record, status)) {
 				fail = 0;
@@ -7761,6 +7775,7 @@ void pri_cc_status_req_rsp(struct pri *ctrl, long cc_id, int status)
 		break;
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			if (cc_record->response.invoke_operation != ROSE_ETSI_CCBSStatusRequest) {
 				/* We no longer know how to send the response. */

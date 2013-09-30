@@ -1040,6 +1040,7 @@ int rose_diverting_leg_information1_encode(struct pri *ctrl, q931_call *call)
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end = enc_etsi_diverting_leg_information1(ctrl, buffer, buffer + sizeof(buffer),
 			call);
 		break;
@@ -1209,6 +1210,7 @@ static int rose_diverting_leg_information2_encode(struct pri *ctrl, q931_call *c
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end = enc_etsi_diverting_leg_information2(ctrl, buffer, buffer + sizeof(buffer),
 			call);
 		break;
@@ -1331,6 +1333,7 @@ int rose_diverting_leg_information3_encode(struct pri *ctrl, q931_call *call,
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end = enc_etsi_diverting_leg_information3(ctrl, buffer, buffer + sizeof(buffer),
 			call);
 		break;
@@ -1867,6 +1870,7 @@ int pri_mwi_indicate_v2(struct pri *ctrl, const struct pri_party_id *mailbox,
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (!BRI_NT_PTMP(ctrl)) {
 			return -1;
 		}
@@ -2255,6 +2259,7 @@ static int rose_reroute_request_encode(struct pri *ctrl, q931_call *call,
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (PTMP_MODE(ctrl)) {
 			end =
 				enc_etsi_call_deflection(ctrl, buffer, buffer + sizeof(buffer), call,
@@ -2983,6 +2988,7 @@ static int rose_call_transfer_complete_encode(struct pri *ctrl, q931_call *call,
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end =
 			enc_etsi_ect_inform(ctrl, buffer, buffer + sizeof(buffer), call, call_status);
 		break;
@@ -3318,6 +3324,7 @@ int pri_call_add_standard_apdus(struct pri *ctrl, q931_call *call)
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (call->aoc_charging_request) {
 			aoc_charging_request_send(ctrl, call, call->aoc_charging_request);
 		}
@@ -3443,6 +3450,7 @@ int rose_request_subaddress_encode(struct pri *ctrl, struct q931_call *call)
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end = enc_etsi_request_subaddress(ctrl, buffer, buffer + sizeof(buffer));
 		break;
 	case PRI_SWITCH_QSIG:
@@ -3556,6 +3564,7 @@ static int rose_subaddress_transfer_encode(struct pri *ctrl, struct q931_call *c
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end =
 			enc_etsi_subaddress_transfer(ctrl, buffer, buffer + sizeof(buffer), call);
 		break;
@@ -3790,6 +3799,7 @@ int rose_error_msg_encode(struct pri *ctrl, q931_call *call, int msgtype, int in
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end =
 			enc_etsi_error(ctrl, buffer, buffer + sizeof(buffer), call, invoke_id, code);
 		break;
@@ -3921,6 +3931,7 @@ int rose_result_ok_encode(struct pri *ctrl, q931_call *call, int msgtype, int in
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end =
 			enc_etsi_result_ok(ctrl, buffer, buffer + sizeof(buffer), call, invoke_id);
 		break;
@@ -4122,6 +4133,7 @@ static int rose_mcid_req_encode(struct pri *ctrl, q931_call *call)
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		end = enc_etsi_mcid_req(ctrl, buffer, buffer + sizeof(buffer), call);
 		break;
 	default:

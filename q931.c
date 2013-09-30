@@ -2961,6 +2961,7 @@ static int transmit_display(int full_ie, struct pri *ctrl, q931_call *call, int 
 	case PRI_SWITCH_QSIG:
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		break;
 	default:
 		/* Prefix text with character set indicator. */
@@ -5772,6 +5773,7 @@ int q931_notify(struct pri *ctrl, q931_call *c, int channel, int info)
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_T1:
 	case PRI_SWITCH_EUROISDN_E1:
+	case PRI_SWITCH_ARINC:
 		break;
 	default:
 		if ((info > 0x2) || (info < 0x00)) {

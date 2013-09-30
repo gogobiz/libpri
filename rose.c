@@ -1751,6 +1751,7 @@ static const struct rose_convert_msg *rose_find_msg_by_op_code(struct pri *ctrl,
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_T1:
 	case PRI_SWITCH_EUROISDN_E1:
+	case PRI_SWITCH_ARINC:
 		table = rose_etsi_msgs;
 		num_entries = ARRAY_LEN(rose_etsi_msgs);
 		break;
@@ -1809,6 +1810,7 @@ static const struct rose_convert_msg *rose_find_msg_by_op_val(struct pri *ctrl,
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_T1:
 	case PRI_SWITCH_EUROISDN_E1:
+	case PRI_SWITCH_ARINC:
 		table = rose_etsi_msgs;
 		num_entries = ARRAY_LEN(rose_etsi_msgs);
 		break;
@@ -1887,6 +1889,7 @@ static const struct rose_convert_error *rose_find_error_by_op_code(struct pri *c
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_T1:
 	case PRI_SWITCH_EUROISDN_E1:
+	case PRI_SWITCH_ARINC:
 		table = rose_etsi_errors;
 		num_entries = ARRAY_LEN(rose_etsi_errors);
 		break;
@@ -1945,6 +1948,7 @@ static const struct rose_convert_error *rose_find_error_by_op_val(struct pri *ct
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_T1:
 	case PRI_SWITCH_EUROISDN_E1:
+	case PRI_SWITCH_ARINC:
 		table = rose_etsi_errors;
 		num_entries = ARRAY_LEN(rose_etsi_errors);
 		break;
@@ -2340,6 +2344,7 @@ unsigned char *facility_encode_header(struct pri *ctrl, unsigned char *pos,
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_T1:
 	case PRI_SWITCH_EUROISDN_E1:
+	case PRI_SWITCH_ARINC:
 		*pos++ = 0x80 | Q932_PROTOCOL_ROSE;
 		header = NULL;
 		break;

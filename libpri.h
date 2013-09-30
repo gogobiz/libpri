@@ -67,6 +67,7 @@
 #define PRI_SWITCH_GR303_EOC		8	/* GR-303 Embedded Operations Channel */
 #define PRI_SWITCH_GR303_TMC		9	/* GR-303 Timeslot Management Channel */
 #define PRI_SWITCH_QSIG			10	/* QSIG Switch */
+#define PRI_SWITCH_ARINC		21 /* ARINC Protocol */
 /* Switchtypes 11 - 20 are reserved for internal use */
 
 

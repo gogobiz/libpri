@@ -1616,6 +1616,7 @@ int pri_aoc_de_request_response_send(struct pri *ctrl, q931_call *call, int resp
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		return aoc_de_request_response_encode(ctrl, call, response, invoke_id);
 	case PRI_SWITCH_QSIG:
 		break;
@@ -1635,6 +1636,7 @@ int pri_aoc_s_request_response_send(struct pri *ctrl, q931_call *call, int invok
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		return aoc_s_request_response_encode(ctrl, call, invoke_id, aoc_s);
 	case PRI_SWITCH_QSIG:
 		break;
@@ -1662,6 +1664,7 @@ int aoc_charging_request_send(struct pri *ctrl, q931_call *call, enum PRI_AOC_RE
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		if (BRI_NT_PTMP(ctrl)) {
 			/*
 			 * We are not setup to handle responses from multiple phones.
@@ -1698,6 +1701,7 @@ int pri_aoc_s_send(struct pri *ctrl, q931_call *call, const struct pri_subcmd_ao
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		return aoc_s_encode(ctrl, call, aoc_s);
 	case PRI_SWITCH_QSIG:
 		break;
@@ -1717,6 +1721,7 @@ int pri_aoc_d_send(struct pri *ctrl, q931_call *call, const struct pri_subcmd_ao
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		return aoc_d_encode(ctrl, call, aoc_d);
 	case PRI_SWITCH_QSIG:
 		break;
@@ -1735,6 +1740,7 @@ int pri_aoc_e_send(struct pri *ctrl, q931_call *call, const struct pri_subcmd_ao
 	switch (ctrl->switchtype) {
 	case PRI_SWITCH_EUROISDN_E1:
 	case PRI_SWITCH_EUROISDN_T1:
+	case PRI_SWITCH_ARINC:
 		return aoc_e_encode(ctrl, call, aoc_e);
 	case PRI_SWITCH_QSIG:
 		break;

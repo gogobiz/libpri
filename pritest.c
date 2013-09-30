@@ -136,6 +136,8 @@ static int str2switch(char *swtype)
 		return PRI_SWITCH_GR303_EOC;
 	if (!strcasecmp(swtype, "gr303tmc"))
 		return PRI_SWITCH_GR303_TMC;
+	if (!strcasecmp(swtype, "arinc"))
+		return PRI_SWITCH_ARINC;
 	return -1;
 }
 
