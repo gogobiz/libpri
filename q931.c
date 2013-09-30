@@ -1272,6 +1272,7 @@ static char *binary(int b, int len) {
 	return res;
 }
 
+// TODO: need to verify that this will not error the frame.
 static int receive_channel_id(int full_ie, struct pri *ctrl, q931_call *call, int msgtype, q931_ie *ie, int len)
 {	
 	int x;
@@ -2018,7 +2019,8 @@ static int transmit_bearer_capability(int full_ie, struct pri *ctrl, q931_call *
 		ie->data[pos++] = call->bc.transmultiple | 0x80;
 	}
 
-	if ((tc & PRI_TRANS_CAP_DIGITAL) && (ctrl->switchtype == PRI_SWITCH_EUROISDN_E1) &&
+	if ((tc & PRI_TRANS_CAP_DIGITAL) && 
+		(ctrl->switchtype == PRI_SWITCH_EUROISDN_E1 || ctrl_switchtype == PRI_SWITCH_ARINC) &&
 		(call->bc.transmoderate == TRANS_MODE_PACKET)) {
 		/* Apparently EuroISDN switches don't seem to like user layer 2/3 */
 		return 4;
@@ -3776,7 +3778,10 @@ static int transmit_sending_complete(int full_ie, struct pri *ctrl, q931_call *c
 {
 	if ((ctrl->overlapdial && call->complete) || /* Explicit */
 		(!ctrl->overlapdial && ((ctrl->switchtype == PRI_SWITCH_EUROISDN_E1) || 
-		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_EUROISDN_T1)))) {
+		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_EUROISDN_T1))
+		/* TODO: Possibly need for ARINC? */
+		)) {
+		
 		/* Include this single-byte IE */
 		return 1;
 	}
@@ -5210,7 +5215,9 @@ static void init_header(struct pri *ctrl, q931_call *call, unsigned char *buf, q
 			crv = ((unsigned) call->cr) ^ Q931_CALL_REFERENCE_FLAG;
 		}
 		h->crv[0] = (crv >> 8) & 0xff;
-		h->crv[1] = crv & 0xff;
+		//
+		if (!ctrl->switchtype == PRI_SWITCH_ARINC)
+			h->crv[1] = crv & 0xff;
 	} else {
 		h->crlen = 1;
 		/* Invert the Q931_CALL_REFERENCE_FLAG to make it from our sense */
