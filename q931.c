@@ -1537,9 +1537,17 @@ static int transmit_channel_id(int full_ie, struct pri *ctrl, q931_call *call, i
 				}
 			} else {
 				if (ctrl->chan_mapping_logical && call->channelno > 16) {
-					ie->data[pos++] = 0x80 | (call->channelno - 1);
+					if (ctrl->switchtype == PRI_SWITCH_ARINC) {
+						ie->data[pos++] = (call->channelno - 1);
+					} else {
+						ie->data[pos++] = 0x80 | (call->channelno - 1);	
+					}				
 				} else {
-					ie->data[pos++] = 0x80 | call->channelno;
+					if (ctrl->switchtype == PRI_SWITCH_ARINC) {
+						ie->data[pos++] = call->channelno;
+					} else {
+						ie->data[pos++] = 0x80 | call->channelno;
+					}				
 				}
 			}
 		} else if (call->slotmap != -1) {
