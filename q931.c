@@ -3778,9 +3778,8 @@ static int transmit_sending_complete(int full_ie, struct pri *ctrl, q931_call *c
 {
 	if ((ctrl->overlapdial && call->complete) || /* Explicit */
 		(!ctrl->overlapdial && ((ctrl->switchtype == PRI_SWITCH_EUROISDN_E1) || 
-		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_EUROISDN_T1))
-		/* TODO: Possibly need for ARINC? */
-		)) {
+		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_EUROISDN_T1) ||
+ +		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_ARINC))		)) {
 		
 		/* Include this single-byte IE */
 		return 1;
@@ -4615,6 +4614,9 @@ struct q931_call *q931_new_call(struct pri *ctrl)
 			if (ctrl->cref > 32767) {
 				ctrl->cref = 1;
 			}
+	    		if (ctrl->switchtype == PRI_SWITCH_ARINC && ctrl->cref > 127) {
+				ctrl->cref = 1;
+ 			}
 		} else if (ctrl->cref > 127) {
 				ctrl->cref = 1;
 		}
@@ -5204,9 +5206,14 @@ static void init_header(struct pri *ctrl, q931_call *call, unsigned char *buf, q
 	h->x0 = 0;		/* Reserved 0 */
 	if (q931_is_dummy_call(call)) {
 		h->crlen = 0;
-	} else if (!ctrl->bri) {
+	// Hijacked for ARINC
+	} else if (!ctrl->bri && !ctrl->switchtype == PRI_SWITCH_ARINC) {
 		/* Two bytes of Call Reference. */
-		h->crlen = 2;
+		if (ctrl->switchtype == PRI_SWITCH_ARINC) {
+			h->crlen = 1;
+		} else {
+			h->crlen = 2;
+		}
 		if (ctrl->link.next) {
 			/* On GR-303, Q931_CALL_REFERENCE_FLAG is always 0 */
 			crv = ((unsigned) call->cr) & ~Q931_CALL_REFERENCE_FLAG;
@@ -5215,9 +5222,7 @@ static void init_header(struct pri *ctrl, q931_call *call, unsigned char *buf, q
 			crv = ((unsigned) call->cr) ^ Q931_CALL_REFERENCE_FLAG;
 		}
 		h->crv[0] = (crv >> 8) & 0xff;
-		//
-		if (!ctrl->switchtype == PRI_SWITCH_ARINC)
-			h->crv[1] = crv & 0xff;
+		h->crv[1] = crv & 0xff;
 	} else {
 		h->crlen = 1;
 		/* Invert the Q931_CALL_REFERENCE_FLAG to make it from our sense */

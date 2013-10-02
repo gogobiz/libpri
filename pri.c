@@ -153,7 +153,7 @@ char *pri_switch2str(int sw)
 	case PRI_SWITCH_QSIG:
 		return "Q.SIG switch";
 	case PRI_SWITCH_ARINC:
-		return "ARINC 746"
+		return "ARINC 746";
 	default:
 		return "Unknown switchtype";
 	}
