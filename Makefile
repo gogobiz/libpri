@@ -40,6 +40,7 @@ STATIC_LIBRARY=libpri.a
 DYNAMIC_LIBRARY:=libpri.so.$(SONAME)
 STATIC_OBJS= \
 	copy_string.o \
+	arinc.o \
 	pri.o \
 	q921.o \
 	prisched.o \

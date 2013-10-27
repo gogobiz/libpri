@@ -46,6 +46,8 @@
 #define T_WAIT_MAX	10000
 
 #define Q921_FRAMETYPE_MASK	0x3
+#define ARIN_FRAMETYPE_MASK	0x3
+
 
 #define Q921_FRAMETYPE_U	0x3
 #define Q921_FRAMETYPE_I	0x0
@@ -63,8 +65,8 @@
 // [arinc patch: start]
 // SAPI 2
 // SAPI is 2 for equipment control
-#define Q921_SAPI_EQUIPMENT_CTRL		2
-#define Q921_TEI_EQUIPMENT_CTRL			0
+#define ARINC_Q921_SAPI_EQUIPMENT_CTRL		2
+#define ARINC_Q921_TEI_EQUIPMENT_CTRL			0
 // [arinc patch: end]
 #define Q921_SAPI_GR303_EOC				1
 #define Q921_SAPI_GR303_TMC_SWITCHING	1
@@ -235,6 +237,7 @@ struct q921_link {
 
 	/*! Service Access Profile Identifier (SAPI) of this link */
 	int sapi;
+
 	/*! Terminal Endpoint Identifier (TEI) of this link */
 	int tei;
 	/*! TEI assignment random indicator. */
@@ -246,6 +249,14 @@ struct q921_link {
 	int v_s;
 	/*! V(R) - Next I-frame sequence number expected to receive */
 	int v_r;
+
+	/* ARINC Modifiers - to track I-frame sequences separately from SAPI/0 messages */
+	/*! V(A) - Next I-frame sequence number needing ack */
+	int arinc__v_a;
+	/*! V(S) - Next I-frame sequence number to send */
+	int arinc__v_s;
+	/*! V(R) - Next I-frame sequence number expected to receive */
+	int arinc__v_r;
 
 	/* Various timers */
 
@@ -267,8 +278,10 @@ struct q921_link {
 
 	unsigned int peer_rx_busy:1;
 	unsigned int own_rx_busy:1;
+	unsigned int arinc_acknowledge_pending:1;
 	unsigned int acknowledge_pending:1;
 	unsigned int reject_exception:1;
+	unsigned int arinc_reject_exception:1;
 	unsigned int l3_initiated:1;
 };
 
@@ -290,6 +303,8 @@ extern pri_event *q921_receive(struct pri *pri, q921_h *h, int len);
 
 int q921_transmit_iframe(struct q921_link *link, void *buf, int len, int cr);
 
+// arinc
+int arinc_q921_transmit_iframe(struct q921_link *link, void *buf, int len, int cr);
 int q921_transmit_uiframe(struct q921_link *link, void *buf, int len);
 
 extern pri_event *q921_dchannel_up(struct pri *pri);

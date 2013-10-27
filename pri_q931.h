@@ -36,6 +36,12 @@ typedef enum q931_mode {
 	PACKET_MODE
 } q931_mode;
 
+typedef struct arinc_q931_h {
+	unsigned char raw[0];
+	u_int8_t pd;
+	u_int8_t contents[0];
+} __attribute__ ((packed)) arinc_q931_h;
+
 typedef struct q931_h {
 	unsigned char raw[0];
 	u_int8_t pd;		/* Protocol Discriminator */
@@ -50,6 +56,14 @@ typedef struct q931_h {
 	u_int8_t crv[3];/*!< Call reference value */
 } __attribute__ ((packed)) q931_h;
 
+typedef struct arinc_q931_mh {
+        u_int8_t msg;
+        u_int8_t msglen;
+        u_int8_t invoke_id_element;
+        u_int8_t invoke_id_len;
+        u_int8_t invoke_id;
+        u_int8_t data[0];
+} __attribute__ ((packed)) arinc_q931_mh;
 
 /* Message type header */
 typedef struct q931_mh {
@@ -63,6 +77,12 @@ typedef struct q931_mh {
 	u_int8_t data[0];
 } __attribute__ ((packed)) q931_mh;
 
+typedef struct arinc_q931_ie {
+	u_int8_t ie;
+	u_int8_t len;
+	u_int8_t data[0];
+} __attribute__ ((packed)) arinc_q931_ie;
+
 /* Information element format */
 typedef struct q931_ie {
 	u_int8_t ie;
@@ -72,6 +92,42 @@ typedef struct q931_ie {
 
 #define Q931_RES_HAVEEVENT (1 << 0)
 #define Q931_RES_INERRROR  (1 << 1)
+
+/* ARINC ECL Information Elements */
+#define ARINC_INVOKE_IDENTIFIER            0x01 /*  1 decimal   */
+#define ARINC_MANAGED_OBJECT_CLASS         0x02 /*  2 decimal   */
+#define ARINC_MANAGED_OBJECT_INSTANCE      0x03 /*  3 decimal   */
+#define ARINC_CURRENT_TIME                 0x05 /*  5 decimal   */
+#define ARINC_EVENT_TYPE                   0x0A /* 10 decimal   */
+#define ARINC_EVENT_TIME                   0x0B /* 11 decimal   */
+#define ARINC_EVENT_REPLY                  0x0C /* 12 decimal   */
+#define ARINC_ATTRIBUTE_IDENTIFIER_LIST    0x14 /* 20 decimal   */
+#define ARINC_EVENT_INFORMATION            0x15 /* 21 decimal NOT USED, LISTED FOR COMPATIBILITY WITH OLDER SYSTEM  */
+#define ARINC_ATTRIBUTE_LIST               0x16 /* 22 decimal RECOMMENDED OPTIONAL IE*/
+#define ARINC_ERRORS                       0x28 /* 40 decimal */
+
+#define ARINC_ENGPAGE_CALLBACK_NUMBER      0xB6
+#define ARINC_PAGING_CALLBACK_NUMBER       0xB8
+#define ARINC_PAGING_CALLBACK_EXTENSION    0xBA
+#define ARINC_PAGING_CALLBACK_NUMBER_TYPE  0xBC
+#define ARINC_PAGING_REGISTRATION          0xBE
+#define ARINC_LOCKING_SHIFT                0x90
+#define ARINC_NON_LOCKING_SHIFT            0x98
+
+/* All ARINC EQMNTCTRL Causes */
+#define ARINC_EQMTCTRL_CAUSE_CLASS_INSTANCE_CONFLICT 	1  /* ARINC 0x 01 */
+#define ARINC_EQMTCTRL_CAUSE_DUPLICATE_INVOCATION 		2  /* ARINC 0x 02 */
+#define ARINC_EQMTCTRL_CAUSE_INCORRECT_LENGTH 			3  /* ARINC 0x 03 */
+#define ARINC_EQMTCTRL_CAUSE_INVALID_ARGUMENT_VALUE 	4  /* ARINC 0x 04 */
+#define ARINC_EQMTCTRL_CAUSE_INVALID_ATTRIBUTE_VALUE 	5  /* ARINC 0x 05 */
+#define ARINC_EQMTCTRL_CAUSE_NO_SUCH_ARGUMENT 			9  /* ARINC 0x 09 */
+#define ARINC_EQMTCTRL_CAUSE_NO_SUCH_ATTRIBUTE 			10 /* ARINC 0x 0A */
+#define ARINC_EQMTCTRL_CAUSE_NO_SUCH_EVENT_TYPE 		11 /* ARINC 0x 0B */
+#define ARINC_EQMTCTRL_CAUSE_NO_SUCH_MESSAGE_TYPE 		12 /* ARINC 0x 0C */
+#define ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_CLASS 		13 /* ARINC 0x 0D */
+#define ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_INSTANCE 	14 /* ARINC 0x 0E */
+#define ARINC_EQMTCTRL_CAUSE_PROCESSING_FAILURE 		15 /* ARINC 0x 0F */
+#define ARINC_EQMTCTRL_CAUSE_UNRECOGNIZED_OPERATION 	16 /* ARINC 0x 10 */
 
 #define Q931_PROTOCOL_DISCRIMINATOR 0x08
 #define GR303_PROTOCOL_DISCRIMINATOR 0x4f
@@ -84,6 +140,22 @@ typedef struct q931_ie {
 // EQUIPMENT CTRL
 #define ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR 0x42
 // [arinc patch: end]
+//
+/* Event Messages */
+#define ARINC_EVENT_REQUEST           (0x02 << 1) + 0 /* 7 bits p->msg; p->mode=0 */
+#define ARINC_EVENT_RESPONSE 7
+//#define ARINC_EVENT_REPORT_REQUEST	0x00	
+//#define ARINC_EVENT_REPORT_RESPONSE		
+#define ARINC_TEST 0x03 << 1
+
+/* Get Messages */
+#define ARINC_GET_REQUEST             (0x04 << 1) + 0 /* 7 bits p->msg; p->mode=0 */
+#define ARINC_GET_RESPONSE            (0x05 << 1) + 1 /* 7 bits p->msg; p->mode=1 */
+
+/* Set Messages */
+#define ARINC_SET_REQUEST             (0x08 << 1) + 0 /* 7 bits p->msg; p->mode=0 */
+#define ARINC_SET_RESPONSE            (0x09 << 1) + 1 /* 7 bits p->msg; p->mode=1 */
+
 
 /* Q.931 / National ISDN Message Types */
 
@@ -205,6 +277,10 @@ typedef struct q931_ie {
 #define Q931_IE_USER_USER				0x7E
 #define Q931_IE_ESCAPE_FOR_EXT			0x7F
 
+/* Equipment Control state stuff */
+#define ARINC_INVOCATION_STATE_NULL                           0
+#define ARINC_INVOCATION_STATE_WAITING_RESPONSE               1
+#define ARINC_INVOCATION_STATE_PROCESSING_REQUEST             2
 
 /*! Q.931 call states */
 enum Q931_CALL_STATE {
@@ -460,6 +536,10 @@ extern int maintenance_service(struct pri *pri, int span, int channel, int chang
 
 int q931_receive(struct q921_link *link, q931_h *h, int len);
 
+/* ARINC Patch for OVerloaded Receive Function */
+//int arinc_q931_receive(struct pri *ctrl, q931_h *h, int len);
+int arinc_handle_ecl(struct q921_link *link, arinc_q931_h *h, int len);
+
 extern int q931_alerting(struct pri *pri, q931_call *call, int channel, int info);
 
 extern int q931_call_progress_with_cause(struct pri *pri, q931_call *call, int channel, int info, int cause);
@@ -500,6 +580,7 @@ extern int q931_setup(struct pri *pri, q931_call *c, struct pri_sr *req);
 int q931_register(struct pri *ctrl, q931_call *call);
 
 void q931_dump(struct pri *ctrl, int tei, q931_h *h, int len, int txrx);
+void arinc_q931_dump(struct pri *ctrl, int tei, arinc_q931_h *h, int len, int txrx);
 
 void q931_destroycall(struct pri *pri, q931_call *c);
 
@@ -520,5 +601,7 @@ int q931_send_hold_rej(struct pri *ctrl, struct q931_call *call, int cause);
 int q931_send_retrieve(struct pri *ctrl, struct q931_call *call, int channel);
 int q931_send_retrieve_ack(struct pri *ctrl, struct q931_call *call, int channel);
 int q931_send_retrieve_rej(struct pri *ctrl, struct q931_call *call, int cause);
+
+char *arinc_q931_msg2str(int msg);
 
 #endif

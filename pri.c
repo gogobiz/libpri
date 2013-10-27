@@ -40,6 +40,9 @@
 #include <stdarg.h>
 #include "compat.h"
 #include "libpri.h"
+//TODO: #ifdef ARINC
+#include "arinc.h"
+// #endif
 #include "pri_internal.h"
 #include "pri_facility.h"
 
@@ -50,6 +53,12 @@
 struct pri_timer_table {
 	const char *name;
 	enum PRI_TIMERS_AND_COUNTERS number;
+	unsigned long used_by;
+};
+
+struct arinc_timer_table {
+	const char *name;
+	enum ARINC_TIMERS_AND_COUNTERS number;
 	unsigned long used_by;
 };
 
@@ -159,6 +168,49 @@ char *pri_switch2str(int sw)
 	}
 }
 
+
+static void arinc_default_timers(struct pri *ctrl, int switchtype)
+{
+	unsigned idx;
+
+	/* Initialize all timers/counters to unsupported/disabled. */
+	for (idx = 0; idx < ARINC_MAX_TIMERS; ++idx) {
+		ctrl->arinc_timers[idx] = -1;
+	}
+
+	/* Set timer values to standard defaults.  Time is in ms. */
+	ctrl->arinc_timers[ARINC_TIMER_N200] = 3;			/* Max numer of Q.921 retransmissions */
+	ctrl->arinc_timers[ARINC_TIMER_N202] = 3;			/* Max numer of transmissions of the TEI identity request message */
+
+	if (ctrl->bri) {
+		ctrl->arinc_timers[ARINC_TIMER_K] = 1;			/* Max number of outstanding I-frames */
+	} else {
+		ctrl->arinc_timers[ARINC_TIMER_K] = 7;			/* Max number of outstanding I-frames */
+	}
+
+	ctrl->arinc_timers[ARINC_TIMER_T200] = 1000;		/* Time between SABME's */
+	// ctrl->arinc_timers[ARINC_TIMER_T201] = ctrl->arinc_timers[ARINC_TIMER_T200];/* Time between TEI Identity Checks (Default same as T200) */
+	ctrl->arinc_timers[ARINC_TIMER_T202] = 10 * 1000;	/* Min time between transmission of TEI Identity request messages */
+	ctrl->arinc_timers[ARINC_TIMER_T203] = 10 * 1000;	/* Max time without exchanging packets */
+
+	// TODO: FIX THIS TO USE ARINC TIMER ctrl->arinc_timers[ARINC_TIMER_T303] = 4 * 1000;	/* Length between SETUP retransmissions and timeout */
+	//ctrl->arinc_timers[ARINC_TIMER_T303] = 11 * 1000;	/* Length between SETUP retransmissions and timeout */
+	ctrl->arinc_timers[ARINC_TIMER_T305] = 30 * 1000;	/* Wait for DISCONNECT acknowledge */
+	ctrl->arinc_timers[ARINC_TIMER_T308] = 4 * 1000;	/* Wait for RELEASE acknowledge */
+	//ctrl->arinc_timers[ARINC_TIMER_T309] = 6 * 1000;	/* Time to wait before clearing calls in case of D-channel transient event.  Q.931 specifies 6-90 seconds */
+	ctrl->arinc_timers[ARINC_TIMER_T313] = 4 * 1000;	/* Wait for CONNECT acknowledge, CPE side only */
+
+	ctrl->arinc_timers[ARINC_TIMER_TM20] = 2500;		/* Max time awaiting XID response - Q.921 Appendix IV */
+	ctrl->arinc_timers[ARINC_TIMER_NM20] = 3;			/* Number of XID retransmits - Q.921 Appendix IV */
+
+	/* Set any switch specific override default values */
+	switch (switchtype) {
+	default:
+		break;
+	}
+}
+
+
 static void pri_default_timers(struct pri *ctrl, int switchtype)
 {
 	unsigned idx;
@@ -183,8 +235,8 @@ static void pri_default_timers(struct pri *ctrl, int switchtype)
 	ctrl->timers[PRI_TIMER_T202] = 2 * 1000;	/* Min time between transmission of TEI Identity request messages */
 	ctrl->timers[PRI_TIMER_T203] = 10 * 1000;	/* Max time without exchanging packets */
 
-	ctrl->timers[PRI_TIMER_T303] = 4 * 1000;	/* Length between SETUP retransmissions and timeout */
-	ctrl->timers[PRI_TIMER_T305] = 30 * 1000;	/* Wait for DISCONNECT acknowledge */
+	// TODO: FIX THIS TO USE ARINC TIMER ctrl->timers[PRI_TIMER_T303] = 4 * 1000;	/* Length between SETUP retransmissions and timeout */
+ +	ctrl->timers[PRI_TIMER_T303] = 11 * 1000;	/* Length between SETUP retransmissions and timeout */	ctrl->timers[PRI_TIMER_T305] = 30 * 1000;	/* Wait for DISCONNECT acknowledge */
 	ctrl->timers[PRI_TIMER_T308] = 4 * 1000;	/* Wait for RELEASE acknowledge */
 	ctrl->timers[PRI_TIMER_T309] = 6 * 1000;	/* Time to wait before clearing calls in case of D-channel transient event.  Q.931 specifies 6-90 seconds */
 	ctrl->timers[PRI_TIMER_T312] = (4 + 2) * 1000;/* Supervise broadcast SETUP message call reference retention. T303 + 2 seconds */
@@ -540,6 +592,7 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 	switch (switchtype) {
 	case PRI_SWITCH_GR303_EOC:
 	case PRI_SWITCH_GR303_TMC:
+	case PRI_SWITCH_ARINC:
 		create_dummy_call = 0;
 		break;
 	default:
@@ -584,6 +637,7 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 	ctrl->nsf = PRI_NSF_NONE;
 	ctrl->callpool = &ctrl->localpool;
 	pri_default_timers(ctrl, switchtype);
+	arinc_default_timers(ctrl, switchtype);
 	ctrl->q921_rxcount = 0;
 	ctrl->q921_txcount = 0;
 	ctrl->q931_rxcount = 0;
@@ -610,6 +664,13 @@ static struct pri *pri_ctrl_new(int fd, int node, int switchtype, pri_io_cb rd, 
 			pri_ctrl_destroy(ctrl);
 			return NULL;
 		}
+		break;
+	case PRI_SWITCH_ARINC:
+		// ctrl->protodisc = PRI_SWITCH_ARINC; // TODO -clean this up - our ctrl discriminator needs to be Q931, even when running SAPI 2 through it
+		ctrl->protodisc = Q931_PROTOCOL_DISCRIMINATOR;
+		ctrl->invocationpool = &ctrl->invocationpool_ptr;
+		arinc_satcom_eqmtctrl_init();
+		pri_link_init(ctrl, &ctrl->link, Q921_SAPI_CALL_CTRL, tei); //TODO: Perhaps we need to be smarter about sapi 2 messages here?
 		break;
 	default:
 		ctrl->protodisc = Q931_PROTOCOL_DISCRIMINATOR;

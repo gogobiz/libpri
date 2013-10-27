@@ -40,6 +40,8 @@
 #include <stdio.h>
 #include <limits.h>
 
+#include "arinc.h" // TODO: Fixup compiler option for ARINC compat
+
 enum mandatory_ie_status {
 	MAND_STATUS_OK,
 	MAND_STATUS_CONTENT_ERROR,
@@ -47,12 +49,20 @@ enum mandatory_ie_status {
 };
 
 #define MAX_MAND_IES 10
+#define ARINC_MAX_MAND_IES 7
 
 struct msgtype {
 	int msgnum;
 	char *name;
 	int mandies[MAX_MAND_IES];
 };
+
+struct arinc_msgtype {
+	int msgnum;
+	char *name;
+	int mandies[ARINC_MAX_MAND_IES];
+};
+
 
 static struct msgtype msgs[] = {
 	/* Call establishment messages */
@@ -112,6 +122,76 @@ static struct msgtype msgs[] = {
 
 	{ Q931_ANY_MESSAGE, "ANY MESSAGE" },
 };
+
+static struct msgtype arinc_eqmtctrl_msgs[] = {
+        { ARINC_EVENT_REQUEST, "EVENT REQUEST", {
+                ARINC_INVOKE_IDENTIFIER,
+                ARINC_MANAGED_OBJECT_CLASS,
+                ARINC_MANAGED_OBJECT_INSTANCE,
+                ARINC_EVENT_TYPE,
+                ARINC_ATTRIBUTE_LIST }},
+
+        { ARINC_EVENT_RESPONSE, "EVENT RESPONSE", {
+                ARINC_INVOKE_IDENTIFIER,
+                ARINC_MANAGED_OBJECT_CLASS,
+                ARINC_MANAGED_OBJECT_INSTANCE }},
+
+        { ARINC_GET_REQUEST, "GET REQUEST", {
+                ARINC_INVOKE_IDENTIFIER,
+                ARINC_MANAGED_OBJECT_CLASS,
+                ARINC_MANAGED_OBJECT_INSTANCE,
+                ARINC_ATTRIBUTE_IDENTIFIER_LIST }},
+
+        { ARINC_GET_RESPONSE, "GET RESPONSE", {
+                ARINC_INVOKE_IDENTIFIER,
+                ARINC_MANAGED_OBJECT_CLASS,
+                ARINC_MANAGED_OBJECT_INSTANCE }},
+
+        { ARINC_SET_REQUEST, "SET REQUEST", {
+                ARINC_INVOKE_IDENTIFIER,
+                ARINC_MANAGED_OBJECT_CLASS,
+                ARINC_MANAGED_OBJECT_INSTANCE }},
+
+        { ARINC_SET_RESPONSE, "SET RESPONSE", {
+                ARINC_INVOKE_IDENTIFIER,
+                ARINC_MANAGED_OBJECT_CLASS,
+                ARINC_MANAGED_OBJECT_INSTANCE,
+                ARINC_ATTRIBUTE_LIST }},
+};
+
+static int event_response_ies[] = { ARINC_INVOKE_IDENTIFIER,
+                /* optional ies */
+                ARINC_MANAGED_OBJECT_CLASS, ARINC_MANAGED_OBJECT_INSTANCE,
+                ARINC_CURRENT_TIME, ARINC_EVENT_TYPE, ARINC_EVENT_REPLY, ARINC_ERRORS, -1 };
+
+//static int get_response_ies[] = { ARINC_INVOKE_IDENTIFIER,
+                /* optional ies */
+                //ARINC_MANAGED_OBJECT_CLASS, ARINC_MANAGED_OBJECT_INSTANCE,
+                //ARINC_CURRENT_TIME, ARINC_ATTRIBUTE_LIST, ARINC_ERRORS, -1 };
+
+static int get_response_ies_no_errors[] = { ARINC_INVOKE_IDENTIFIER,
+               ARINC_MANAGED_OBJECT_CLASS, ARINC_MANAGED_OBJECT_INSTANCE,
+                ARINC_CURRENT_TIME,
+                ARINC_ATTRIBUTE_LIST, -1 };
+
+//static int set_response_ies[] = { ARINC_INVOKE_IDENTIFIER,
+                /* optional ies */
+//                ARINC_MANAGED_OBJECT_CLASS, ARINC_MANAGED_OBJECT_INSTANCE,
+//                ARINC_CURRENT_TIME, ARINC_ATTRIBUTE_LIST, ARINC_ERRORS, -1 };
+//static int set_response_ies_no_errors[] = { ARINC_INVOKE_IDENTIFIER,
+//                ARINC_MANAGED_OBJECT_CLASS, ARINC_MANAGED_OBJECT_INSTANCE,
+//                ARINC_CURRENT_TIME,
+//                ARINC_ATTRIBUTE_LIST, -1 };
+
+int arinc_q931_xmit(struct q921_link *link, arinc_q931_h *h, int len, int cr);
+int arinc_q931_send_message(struct q921_link *link, struct arinc_invocation *event, int msgtype, int arinc_eqmtctrl_ies[]);
+static char *arinc_q931_code2str(int code, struct arinc_msgtype *codes, int max);
+int arinc_q931_add_ie(struct pri *ecl, struct arinc_invocation *invocation, int msgtype, int ie, struct arinc_q931_ie *iet, int maxlen, int *codeset);
+
+struct arinc_invocation *arinc_invocation_get(struct pri *ctrl, int cr);
+struct arinc_invocation *arinc_invocation_new(struct pri *ctrl);
+static void arinc_invocation_init(struct pri *ctrl, struct arinc_invocation *c);
+
 
 static int post_handle_q931_message(struct pri *ctrl, struct q931_mh *mh, struct q931_call *c, enum mandatory_ie_status mand_status);
 static void nt_ptmp_handle_q931_message(struct pri *ctrl, struct q931_mh *mh, struct q931_call *c, int *allow_event, int *allow_posthandle);
@@ -249,11 +329,17 @@ static struct msgtype facilities[] = {
 #define LOC_NETWORK_BEYOND_INTERWORKING	0xa
 
 static char *ie2str(int ie);
-
+static char *arinc_ie2str(int ie);
 
 #define FUNC_DUMP(name) void (name)(int full_ie, struct pri *pri, q931_ie *ie, int len, char prefix)
 #define FUNC_RECV(name) int (name)(int full_ie, struct pri *pri, q931_call *call, int msgtype, q931_ie *ie, int len)
 #define FUNC_SEND(name) int (name)(int full_ie, struct pri *pri, q931_call *call, int msgtype, q931_ie *ie, int len, int order)
+
+#define ARINC_FUNC_DUMP(name) void (name)(int full_ie, struct pri *pri, arinc_q931_ie *ie, int len, char prefix)
+#define ARINC_FUNC_RECV(name) int (name)(int full_ie, struct pri *pri, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len)
+#define ARINC_FUNC_SEND(name) int (name)(int full_ie, struct pri *pri, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order)
+
+
 
 #if 1
 /* Update call state with transition trace. */
@@ -2018,9 +2104,16 @@ static int transmit_bearer_capability(int full_ie, struct pri *ctrl, q931_call *
 	if (call->bc.transmoderate == TRANS_MODE_MULTIRATE) {
 		ie->data[pos++] = call->bc.transmultiple | 0x80;
 	}
-
+	
+	// Per ARINC characteristic - bearer capability length is 3
+	
+	if (ctrl->switchtype == PRI_SWITCH_ARINC) {
+		ie->data[0] = 0xe1;
+		return 3;
+	}
+	
 	if ((tc & PRI_TRANS_CAP_DIGITAL) && 
-		(ctrl->switchtype == PRI_SWITCH_EUROISDN_E1 || ctrl_switchtype == PRI_SWITCH_ARINC) &&
+		(ctrl->switchtype == PRI_SWITCH_EUROISDN_E1) &&
 		(call->bc.transmoderate == TRANS_MODE_PACKET)) {
 		/* Apparently EuroISDN switches don't seem to like user layer 2/3 */
 		return 4;
@@ -2785,7 +2878,11 @@ static int transmit_calling_party_number(int full_ie, struct pri *ctrl, q931_cal
 	}
 
 	datalen = strlen(call->local_id.number.str);
-	ie->data[0] = call->local_id.number.plan;
+	// TODO: Fixup this hack
+	if (ctrl->switchtype == PRI_SWITCH_ARINC)
+		ie->data[0] = 0x00;
+	else
+		ie->data[0] = call->local_id.number.plan;	
 	ie->data[1] = 0x80 | call->local_id.number.presentation;
 	memcpy(ie->data + 2, call->local_id.number.str, datalen);
 	return datalen + (2 + 2);
@@ -3776,10 +3873,13 @@ static int receive_sending_complete(int full_ie, struct pri *ctrl, q931_call *ca
 
 static int transmit_sending_complete(int full_ie, struct pri *ctrl, q931_call *call, int msgtype, q931_ie *ie, int len, int order)
 {
+	// JE - for ARINC, we may want to explicitly disable the sending of this IE in the future.
+	// For right now, overlapdial = no is enough to kill it
+
 	if ((ctrl->overlapdial && call->complete) || /* Explicit */
 		(!ctrl->overlapdial && ((ctrl->switchtype == PRI_SWITCH_EUROISDN_E1) || 
-		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_EUROISDN_T1) ||
- +		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_ARINC))		)) {
+		/* Implicit */   	   (ctrl->switchtype == PRI_SWITCH_EUROISDN_T1))		
+		)) {
 		
 		/* Include this single-byte IE */
 		return 1;
@@ -4277,6 +4377,15 @@ static inline unsigned int ielen(q931_ie *ie)
 		return 2 + ie->len;
 }
 
+static inline unsigned int arinc_ielen(arinc_q931_ie *ie)
+{
+	if ((ie->ie & 0x80) != 0)
+		return 1;
+	else
+		return 2 + ie->len;
+}
+
+
 static inline int ielen_checked(q931_ie *ie, int len_remaining)
 {
 	int len;
@@ -4295,6 +4404,26 @@ static inline int ielen_checked(q931_ie *ie, int len_remaining)
 	}
 	return len;
 }
+
+static inline int arinc_ielen_checked(arinc_q931_ie *ie, int len_remaining)
+{
+	int len;
+
+	if (ie->ie & 0x80) {
+		len = 1;
+	} else if (len_remaining < 2) {
+		/* There is no length octet when there should be. */
+		len = -1;
+	} else {
+		len = 2 + ie->len;
+		if (len_remaining < len) {
+			/* There is not enough room left in the packet for this ie. */
+			len = -1;
+		}
+	}
+	return len;
+}
+
 
 const char *msg2str(int msg)
 {
@@ -4395,6 +4524,42 @@ static inline void q931_dumpie(struct pri *ctrl, int codeset, q931_ie *ie, char 
 		}
 	
 	pri_error(ctrl, "!! %c Unknown IE %d (cs%d, len = %d)\n", prefix, Q931_IE_IE(base_ie), Q931_IE_CODESET(base_ie), ielen(ie));
+}
+
+static inline void arinc_q931_dumpie(struct pri *ctrl, int codeset, arinc_q931_ie *ie, char prefix)
+{
+	unsigned int x;
+	int full_ie = Q931_FULL_IE(codeset, ie->ie);
+	int base_ie;
+	char *buf = malloc(arinc_ielen(ie) * 3 + 1);
+	int buflen = 0;
+
+
+	buf[0] = '\0';
+	if (!(ie->ie & 0x80)) {
+		buflen += sprintf(buf, " %02x", arinc_ielen(ie)-2);
+		for (x = 0; x + 2 < arinc_ielen(ie); ++x)
+			buflen += sprintf(buf + buflen, " %02x", ie->data[x]);
+	}
+	pri_message(ctrl, "%c [%02x%s]\n", prefix, ie->ie, buf);
+	free(buf);
+
+	/* Special treatment for shifts */
+	if((full_ie & 0xf0) == Q931_LOCKING_SHIFT)
+		full_ie &= 0xff;
+
+	base_ie = (((full_ie & ~0x7f) == Q931_FULL_IE(0, 0x80)) && ((full_ie & 0x70) != 0x20)) ? full_ie & ~0x0f : full_ie;
+
+	for (x = 0; x < ARRAY_LEN(arinc_ies); ++x)
+		if (arinc_ies[x].ie == base_ie) {
+			if (arinc_ies[x].dump)
+				arinc_ies[x].dump(full_ie, ctrl, ie, arinc_ielen(ie), prefix);
+			else
+				pri_message(ctrl, "%c IE: %s (len = %d)\n", prefix, arinc_ies[x].name, arinc_ielen(ie));
+			return;
+		}
+	
+	pri_error(ctrl, "!! %c Unknown IE %d (cs%d, len = %d)\n", prefix, Q931_IE_IE(base_ie), Q931_IE_CODESET(base_ie), arinc_ielen(ie));
 }
 
 /*!
@@ -5022,13 +5187,14 @@ static int q931_dump_header(struct pri *ctrl, int tei, q931_h *h, int len, char 
 	q931_mh *mh;
 	int cref;
 
-	pri_message(ctrl, "%c Protocol Discriminator: %s (%d)  len=%d\n", c, disc2str(h->pd), h->pd, len);
+	pri_message(ctrl, "%c Protocol Discriminator On Dump: %s (%d)  len=%d\n", c, disc2str(h->pd), h->pd, len);
 
 	if (len < 2 || len < 2 + h->crlen) {
 		pri_message(ctrl, "%c Message too short for call reference. len=%d\n",
 			c, len);
 		return -1;
 	}
+	pri_message(ctrl, "DUMPING Q931 HEADER non-ARINC style\n");	
 	cref = q931_cr(h);
 	pri_message(ctrl, "%c TEI=%d Call Ref: len=%2d (reference %d/0x%X) (%s)\n",
 		c, tei, h->crlen, cref & ~Q931_CALL_REFERENCE_FLAG,
@@ -5060,6 +5226,68 @@ static int q931_dump_header(struct pri *ctrl, int tei, q931_h *h, int len, char 
 
 	return 0;
 }
+
+static int arinc_q931_dump_header(struct pri *ctrl, int tei, arinc_q931_h *h, int len, char c) {
+
+        q931_mh *mh;
+        // int cref;
+
+	pri_message(ctrl, "DUMPING ARINC Q931 HEADER\n");
+        pri_message(ctrl, "%c Protocol Discriminator: %s (%d)  len=%d\n", c, disc2str(h->pd), h->pd, len);
+
+	/*
+        if (len < 2 || len < 2 + h->crlen) {
+                pri_message(ctrl, "%c Message too short for call reference. len=%d\n",
+                        c, len);
+                return -1;
+        }
+        pri_message(ctrl, "DUMPING Q931 HEADER non-ARINC style\n");     
+        cref = q931_cr(h);
+        pri_message(ctrl, "%c TEI=%d Call Ref: len=%2d (reference %d/0x%X) (%s)\n",
+                c, tei, h->crlen, cref & ~Q931_CALL_REFERENCE_FLAG,
+                cref & ~Q931_CALL_REFERENCE_FLAG, (cref == Q931_DUMMY_CALL_REFERENCE)
+                        ? "Dummy"
+                        : (cref & Q931_CALL_REFERENCE_FLAG)
+                                ? "Sent to originator" : "Sent from originator");
+
+        if (len < 3 + h->crlen) {
+                pri_message(ctrl, "%c Message too short for supported protocols. len=%d\n",
+                        c, len);
+                return -1;
+        }
+	*/
+
+        /* Message header begins at the end of the call reference number */
+        // mh = (q931_mh *)(h->contents + h->crlen);
+        mh = (q931_mh *)(h->contents);
+	// pri_message(ctrl, "%c ARINC Message Type: %s (%d)\n", c, arinc_q931_msg2str(mh->msg, h->pd), mh->msg);
+	pri_message(ctrl, "%c ARINC Message Type: %s (%d)\n", c, arinc_q931_msg2str(mh->msg), mh->msg);
+
+	/*
+	switch (h->pd) {
+        case MAINTENANCE_PROTOCOL_DISCRIMINATOR_1:
+        case MAINTENANCE_PROTOCOL_DISCRIMINATOR_2:
+                pri_message(ctrl, "%c Message Type: %s (%d)\n", c, maintenance_msg2str(mh->msg, h->pd), mh->msg);
+                break;
+        default:
+                // Unknown protocol discriminator but we will treat it as Q.931 anyway. 
+        case GR303_PROTOCOL_DISCRIMINATOR:
+        case Q931_PROTOCOL_DISCRIMINATOR:
+                pri_message(ctrl, "%c Message Type: %s (%d)\n", c, msg2str(mh->msg), mh->msg);
+                break;
+        }
+	*/
+
+        return 0;
+
+	/*
+	pri_message(ctrl, "%c Protocol Discriminator: %s (%d)  len=%d\n", c, disc2str(h->pd), h->pd, len);
+	pri_message(ctrl, "%c TEI=%d", c, tei);
+	return 0;
+	*/
+
+}
+
 
 /*!
  * \internal
@@ -5267,9 +5495,12 @@ static void q931_xmit(struct q921_link *link, q931_h *h, int len, int cr, int ui
 		 * actually get sent a few seconds later.  Q.921 will dump the
 		 * Q.931 message as appropriate at that time.
 		 */
-		if (ctrl->debug & PRI_DEBUG_Q931_DUMP) {
+		if (ctrl->debug & PRI_DEBUG_Q931_DUMP && !h->pd == 2) { // TODO: ARINC fix this uglyness - alias PD = 2			
 			q931_to_q921_passing_dump(ctrl, link->tei, h, len);
 		}
+		if (ctrl->debug)
+			pri_message(ctrl, "Transmitting back to q921 layer for call on SAPI %d with a header PD of %d and a ctrl PD of %d\n", link->sapi, h->pd, ctrl->protodisc);
+
 		q921_transmit_iframe(link, h, len, cr);
 	}
 }
@@ -5377,6 +5608,11 @@ static int send_message(struct pri *ctrl, q931_call *call, int msgtype, int ies[
 				call, call->link, call->link->tei, call->link->sapi);
 		}
 	}
+
+	if (ctrl->debug)
+		pri_message(ctrl, "Sending now hitting q931_xmit message for call %p on link %p with TEP/SAPI %d/%d and DEC protocol discriminator %d\n", 
+				call, call->link, call->link->tei, call->link->sapi, ctrl->protodisc);
+
 	q931_xmit(call->link, h, len, 1, uiframe);
 	call->acked = 1;
 	return 0;
@@ -6454,6 +6690,9 @@ int q931_setup(struct pri *ctrl, q931_call *c, struct pri_sr *req)
 {
 	int res;
 
+	if (ctrl->debug)
+		pri_message(ctrl, "Attempting to Send Call via q931_setup with a CTRL pd of %d\n", ctrl->protodisc);
+
 	if (!req->called.number.valid && (!req->keypad_digits || !req->keypad_digits[0])) {
 		/* No called number or keypad digits to send. */
 		return -1;
@@ -6547,12 +6786,20 @@ int q931_setup(struct pri *ctrl, q931_call *c, struct pri_sr *req)
 	if (BRI_NT_PTMP(ctrl)) {
 		c->outboundbroadcast = 1;
 	}
-	if (ctrl->link.next && !ctrl->bri)
+	if (ctrl->link.next && !ctrl->bri) {
+		if (ctrl->debug)
+			pri_message(ctrl, "Handing to send_message with gr303_setup_ies\n");
 		res = send_message(ctrl, c, Q931_SETUP, gr303_setup_ies);
-	else if (c->cis_call)
+	} else if (c->cis_call) {
+		if (ctrl->debug)
+			pri_message(ctrl, "Handing to send_message with cis_setup ies \n");
 		res = send_message(ctrl, c, Q931_SETUP, cis_setup_ies);
-	else
+	} else {
+		if (ctrl->debug)
+			pri_message(ctrl, "Handing to send_message with plain old setup_ies\n");
 		res = send_message(ctrl, c, Q931_SETUP, setup_ies);
+	}
+
 	if (!res) {
 		c->alive = 1;
 		/* make sure we call PRI_EVENT_HANGUP_ACK once we send/receive RELEASE_COMPLETE */
@@ -7678,6 +7925,378 @@ static struct q931_call *q931_get_subcall(struct q921_link *link, struct q931_ca
 	return cur;
 }
 
+/*
+static char *arinc_q931_disc2str(int disc) {
+        static struct arinc_msgtype discs[] = {
+                        { 0x08, "Q.931" },
+                        { 0x4f, "GR-303" },
+                        { 0x3,"AT&T Maintenance" },
+                        { 0x43, "New AT&T Maintenance" },
+                        { ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR, "ARINC ECL Protocol Discriminator" },
+        };
+
+        return arinc_q931_code2str(disc, discs, sizeof(discs) / sizeof(discs[0]));
+}
+*/
+
+static char *arinc_q931_code2str(int code, struct arinc_msgtype *codes, int max) {
+        int x;
+        for (x=0; x<max; x++)
+                if (codes[x].msgnum == code)
+                        return codes[x].name;
+        return "Unknown";
+}
+
+static inline unsigned int arinc_q931_ielen(arinc_q931_ie *ie) {
+        if ((ie->ie & 0x80) != 0)
+                return 1;
+        else
+                return 2 + ie->len;
+}
+
+void arinc_q931_dump(struct pri *ctrl, int tei, arinc_q931_h *h, int len, int txrx)
+{
+        arinc_q931_mh *mh;
+        char c;
+        int x;
+        int r;
+        int cur_codeset;
+        // int codeset;
+
+	x=0;
+
+        c = txrx ? '>' : '<';
+
+	// Pulled from q921
+        char direction_tag;
+
+        direction_tag = txrx ? '>' : '<';
+
+        // pri_message(ctrl, "\n");
+        //q921_dump_pri_by_h(ctrl, direction_tag, h);
+
+        if (ctrl->debug) {
+                char *buf = malloc(len * 3 + 1);
+                int buflen = 0;
+                if (buf) {
+                        for (x=0;x<len;x++) 
+                                buflen += sprintf(buf + buflen, "%02x ", h->raw[x]);
+                        pri_message(ctrl, "ARINC Q931 FULL BUFFER DUMP: %c [ %s]\n", direction_tag, buf);
+                        free(buf);
+                }
+        }
+
+        if (!(ctrl->debug & (PRI_DEBUG_Q921_DUMP | PRI_DEBUG_Q921_RAW))) {
+                /* Put out a blank line if Q.921 is not dumping. */
+                pri_message(ctrl, "\n");
+        }
+        if (arinc_q931_dump_header(ctrl, tei, h, len, c)) {
+                return;
+        }
+
+        /* Drop length of header, including call reference */
+        mh = (arinc_q931_mh *)(h->contents);
+	// Remove q921 header info 
+        len -= 3; /* Storage for pd,msgtype, and msglen */
+        // codeset = cur_codeset = 0;
+        cur_codeset = 0;
+	
+	x=0; //TODO - fix double use of x, stupid
+
+	while ( x < len ) {
+
+		r = arinc_q931_ielen((arinc_q931_ie *)(mh->data + x-3));                
+		arinc_q931_dumpie(ctrl, cur_codeset, (arinc_q931_ie *)(mh->data + x-3), c);
+		x += r;
+	}
+
+	if ( x > len )
+		pri_message(ctrl, "Houston, we have a few extra bytes\n");
+
+	/*
+        for (x = 0; x < len; x += r) {
+                r = arinc_ielen_checked((arinc_q931_ie *) (mh->data + x), len - x);
+                if (r < 0) {
+                        // We have garbage on the end of the packet.
+                        pri_message(ctrl, "Not enough room for codeset:%d ie:%d(%02x)\n", cur_codeset,
+                                mh->data[x], mh->data[x]);
+                        break;
+                }
+                arinc_q931_dumpie(ctrl, cur_codeset, (arinc_q931_ie *)(mh->data + x), c);
+		
+                switch (mh->data[x] & 0xf8) {
+                case Q931_LOCKING_SHIFT:
+                        if ((mh->data[x] & 7) > 0)
+                                codeset = cur_codeset = mh->data[x] & 7;
+                        break;
+                case Q931_NON_LOCKING_SHIFT:
+                        cur_codeset = mh->data[x] & 7;
+                        break;
+                default:
+                        // Reset temporary codeset change 
+                        cur_codeset = codeset;
+                        break;
+                }
+        }
+	*/
+}
+
+char *arinc_q931_msg2str(int msg) {
+        unsigned int x;
+        for (x=0; x<sizeof(arinc_eqmtctrl_msgs) / sizeof(arinc_eqmtctrl_msgs[0]); x++)
+                if (arinc_eqmtctrl_msgs[x].msgnum == msg)
+                        return arinc_eqmtctrl_msgs[x].name;
+        return "Unknown Message Type";
+}
+
+/* This is a hijack for the SAPI=2 ECL Messaging Management 
+ * 	len is the octet count of the received message */
+// int arinc_q931_receive(struct pri *ctrl, q931_h *h, int len)
+int arinc_handle_ecl(struct q921_link *link, arinc_q931_h *h, int len)
+{
+	struct pri* ctrl;
+	struct arinc_invocation *event;
+	ctrl = link->ctrl;
+
+	struct arinc_q931_mh *mh;
+	//mh = (arinc_q931_mh *)(h->contents);
+	mh = (arinc_q931_mh *)(h->contents);
+	event = arinc_invocation_get(ctrl, mh->invoke_id);
+
+	
+	if (ctrl->debug) {
+		pri_message(ctrl, "Processing ARINC Q931 Receive ECL with protocol discriminator %i with length of %i\n", h->pd, len);
+		// pri_message(ctrl, "Message handler is set to type %i\n", mh->msg);
+		arinc_q931_dump(ctrl, link->tei, h, len, 0);
+	}
+
+
+
+	switch (mh->msg) {
+
+        	case ARINC_EVENT_REQUEST:
+			pri_message(ctrl, "ARINC: Event Request Received\n");
+
+		       	// if (arinc_q931_send_message(link, 0, ARINC_EVENT_RESPONSE, event_response_ies) < 0 )
+		       	if (arinc_q931_send_message(link, event, ARINC_EVENT_RESPONSE, event_response_ies) < 0 )
+				pri_error(ctrl, "ARINC Unable to send a response to EVENT REQUEST invocation\n");	
+
+				
+
+		break;
+
+		case ARINC_GET_REQUEST:
+			pri_message(ctrl, "ARINC: Get Request Received\n");
+
+			// JE TODO - so I'm going to hard code request response attributes here. 
+			// It is likely we should get a lot smarter about this.
+			
+			event->attrib[0] = 1;
+			event->attrib[1] = ARINC_AVAILABILITY_STATUS;
+
+			if (arinc_q931_send_message(link, event, ARINC_GET_RESPONSE, get_response_ies_no_errors) < 0 )
+				pri_error(ctrl, "ARINC Unable to send a response to EVENT REQUEST invocation\n");	
+
+		break;
+
+
+
+/*
+		case ARINC_EVENT_REPORT_REQUEST:
+			pri_message(ctrl, "ARINC: Event Report Request Received\n");
+		break;
+
+		case ARINC_EVENT_REPORT_RESPONSE:
+			pri_message(ctrl, "ARINC: Event Report Response Received\n");
+		break;
+*/
+        	case ARINC_EVENT_RESPONSE:
+			pri_message(ctrl, "ARINC: Event Response Received\n");
+		break;
+
+	}
+
+	return 0;
+	
+}
+
+int arinc_q931_send_message(struct q921_link *link, struct arinc_invocation *invocation, int msgtype, int arinc_eqmtctrl_ies[]) 
+{
+
+	struct pri *ctrl;
+	unsigned char buf[1024];
+	arinc_q931_h *h;
+	arinc_q931_mh *mh;
+	int res;
+	int len;
+	int x = 0;
+	int skip_ie = 0;
+	int offset = -3;
+	int codeset = 0;
+
+	ctrl = link->ctrl;
+	memset(buf, 0, sizeof(buf));
+	len = sizeof(buf);
+
+	if (ctrl->debug)
+		pri_message(ctrl, "ARINC: Send message attempt. Constructing Message Send Header\n");
+
+	// Let's construct ourselves a new header
+
+	h = (arinc_q931_h *)buf;
+	h->pd = ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR;
+	mh = (arinc_q931_mh *)(h->contents);
+	mh->msg = msgtype;
+	len -= 3;
+
+	
+        mh->msglen = len - 3; /* len in the ARINC scheme */
+	// End of the new header construction
+	
+	// Loop through our IEs to construct the full message
+	while (arinc_eqmtctrl_ies[x] > -1) {
+
+                skip_ie = 0; //FALSE
+
+                if ((msgtype & 0x01) == 1 )  {  /* least significant bit is one for response messages*/
+                        //if ( !INCLUDE_OBJECT_IE_FLAG) {
+                        /*if(strcmp(arinc_satcom_eqmtctrl_managed_object_info_in_responses_get(), "false") == 0) {
+                                if ((arinc_eqmtctrl_ies[x] == ARINC_MANAGED_OBJECT_CLASS) || (arinc_eqmtctrl_ies[x] == ARINC_MANAGED_OBJECT_INSTANCE )) {
+                                        skip_ie = 1; //TRUE
+                                }
+                        }
+			*/
+
+                        //if (!INCLUDE_TIME_IE FLAG) {
+                        if(strcmp(arinc_satcom_eqmtctrl_current_time_in_responses_get(), "false") == 0) {
+                                if ( arinc_eqmtctrl_ies[x] == ARINC_CURRENT_TIME) {
+					// JOSH - reinserting time, well, just because
+					skip_ie = 1; //TRUE
+                                }
+                        }
+                }
+
+		if ( !skip_ie ) {		
+
+
+			if(ctrl->debug)
+				pri_message(ctrl, "Attempting to Add IE: %s\n", arinc_ie2str(arinc_eqmtctrl_ies[x])); 
+				res = arinc_q931_add_ie(ctrl, invocation, mh->msg, arinc_eqmtctrl_ies[x], (arinc_q931_ie *)(mh->data + offset), len, &codeset);
+
+			if (res < 0) {
+				pri_error(ctrl, "!! Unable to add IE '%s'\n", arinc_ie2str(arinc_eqmtctrl_ies[x]));
+				return -1;
+			}
+
+			offset += res;
+			len -= res;	
+		}
+
+		x++;
+
+	} // End while arinc_eqmtctrl_ies	
+
+	len = sizeof(buf) - len;
+	mh->msglen = len -3; /* len in the ARINC scheme */
+	arinc_q931_xmit(link, h, len, 1); // TODO: WHAT BIT TO USE?
+    	invocation->acked = 1;
+	return 0;
+
+}	
+
+int arinc_q931_add_ie(struct pri *ctrl, struct arinc_invocation *invocation,
+                int msgtype, int ie, struct arinc_q931_ie *iet, int maxlen, int *codeset)
+{
+        unsigned int x;
+        int res;
+        int total_res;
+        int have_shift;
+        int ies_count;
+        int order;
+
+
+	// TIHS APPEARS TO BE THE CODE THAT IS INCORRECTLY INSERING TWO octets onto the ATTRIBUTE parser - 16 04
+	for (x=0; x < sizeof(arinc_ies) / sizeof(arinc_ies[0]); x++) {
+
+		if (arinc_ies[x].ie == ie) {
+			/* This is our baby */
+			
+			if (arinc_ies[x].transmit) {
+				/* Prepend with CODE SHIFT IE if required */
+				if (*codeset != Q931_IE_CODESET(arinc_ies[x].ie)) {
+					/* Locking shift to codeset 0 isn't possible */
+					iet->ie = Q931_IE_CODESET(arinc_ies[x].ie) | (Q931_IE_CODESET(arinc_ies[x].ie) ? ARINC_LOCKING_SHIFT : ARINC_NON_LOCKING_SHIFT);
+					have_shift = 1;
+					iet = (arinc_q931_ie *)((char *)iet + 1);
+					maxlen--;
+				} else
+					have_shift = 0;
+				ies_count = arinc_ies[x].max_count;
+				if (ies_count == 0)
+					ies_count = INT_MAX;
+				order = 0;
+				total_res = 0;
+				do {
+					
+					iet->ie = ie;
+
+					res = arinc_ies[x].transmit(ie, ctrl, invocation, msgtype, iet,
+							maxlen, ++order);
+
+					/* Error if res < 0 or ignored if res == 0 */
+					if (res < 0)
+						return res;
+					if (res > 0) {
+
+						if ((iet->ie & 0x80) == 0) /* Multibyte IE */
+							iet->len = res - 2;
+
+						total_res += res;
+						maxlen -= res;
+						iet = (arinc_q931_ie *)((char *)iet + res);
+
+					}
+				} while (res > 0 && order < ies_count);
+				if (have_shift && total_res) {
+					if (Q931_IE_CODESET(arinc_ies[x].ie))
+						*codeset = Q931_IE_CODESET(arinc_ies[x].ie);
+					return total_res + 1; /* Shift is single-byte IE */
+				}
+				return total_res;
+			} else {
+				pri_error(ctrl, "!! Don't know how to add an IE %s (%d)\n",
+						arinc_ie2str(ie), ie);
+				return -1;
+			}
+		}
+	}
+	pri_error(ctrl, "!! Unknown IE %d (%s)\n", ie, arinc_ie2str(ie));
+	return -1;
+}
+
+int arinc_q931_xmit(struct q921_link *link, arinc_q931_h *h, int len, int cr)
+{
+        	/* Q921 should have the SAPI = 2 context so this is okay */
+        struct pri *ctrl;
+       	ctrl= link->ctrl;
+
+	if (ctrl->debug) 
+		pri_message(ctrl, "Attempt to xmit\n");
+
+        arinc_q921_transmit_iframe(link, h, len, cr);
+
+        /* The transmit operation might dump the q921 header, so logging the q931
+         message body after the transmit puts the sections of the message in the
+         right order in the log */
+
+        if (ctrl->debug)
+                arinc_q931_dump(ctrl, link->tei, h, len, 1);
+
+        return 0;
+
+}
+
+
 int q931_receive(struct q921_link *link, q931_h *h, int len)
 {
 	q931_mh *mh;
@@ -7705,6 +8324,10 @@ int q931_receive(struct q921_link *link, q931_h *h, int len)
 		return -1;
 	}
 	switch (h->pd) {
+	case ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR:
+		pri_message(ctrl, "Received ARINC 746 ECL Equipment Control Message\n");
+		return arinc_handle_ecl(link, (arinc_q931_h *) h, len);
+		break;
 	case MAINTENANCE_PROTOCOL_DISCRIMINATOR_1:
 	case MAINTENANCE_PROTOCOL_DISCRIMINATOR_2:
 		if (!ctrl->service_message_support) {

@@ -50,6 +50,12 @@ struct pri_sched {
 	void *data;
 };
 
+struct arinc_pri_sched {
+	struct timeval when;
+	void (*callback)(void *data);
+	void *data;
+};
+
 /*
  * libpri needs to be able to allocate B channels to support Q.SIG path reservation.
  * Until that happens, path reservation is not possible.  Fortunately,
@@ -93,6 +99,17 @@ struct pri {
 		/*! First timer id in this timer pool. */
 		unsigned first_id;
 	} sched;
+
+	struct {
+		/*! Dynamically allocated array of timers that can grow as needed. */
+		struct arinc_pri_sched *timer;
+		/*! Numer of timer slots in the allocated array of timers. */
+		unsigned num_slots;
+		/*! Maximum timer slots currently needed. */
+		unsigned max_used;
+		/*! First timer id in this timer pool. */
+		unsigned first_id;
+	} arinc_sched;	
 	int debug;			/* Debug stuff */
 	int state;			/* State of D-channel */
 	int switchtype;		/* Switch type */
@@ -128,19 +145,29 @@ struct pri {
 	int t201_expirycnt;
 	
 	int cref;			/* Next call reference value */
+	//TODO ifdef ARINC
+	int iref;			/* Next call reference value */
+	// endif
 
 	/* All ISDN Timer values */
 	int timers[PRI_MAX_TIMERS];
-
-	/* Used by scheduler */
-	int schedev;
-	pri_event ev;		/* Static event thingy */
-	/*! Subcommands for static event thingy. */
-	struct pri_subcommands subcmds;
+	/* All ARINC ISDN Timer values */
+	int arinc_timers[ARINC_MAX_TIMERS];
 	
 	/* Q.931 calls */
 	struct q931_call **callpool;
 	struct q931_call *localpool;
+	//TODO ifdef ARINC 
+	struct arinc_invocation **invocationpool;
+	struct arinc_invocation *invocationpool_ptr;
+	//endif
+
+  	/* Used by scheduler */
+  	int schedev;
+	int arinc_schedev;	
+	pri_event ev;		/* Static event thingy */
+	/*! Subcommands for static event thingy. */
+	struct pri_subcommands subcmds;
 
 	/* q921/q931 packet counters */
 	unsigned int q921_txcount;
@@ -944,11 +971,16 @@ int q931_is_call_valid(struct pri *ctrl, struct q931_call *call);
 int q931_is_call_valid_gripe(struct pri *ctrl, struct q931_call *call, const char *func_name, unsigned long func_line);
 
 unsigned pri_schedule_event(struct pri *ctrl, int ms, void (*function)(void *data), void *data);
+unsigned arinc_schedule_event(struct pri *ctrl, int ms, void (*function)(void *data), void *data);
 
 extern pri_event *pri_schedule_run(struct pri *pri);
+extern pri_event *arinc_schedule_run(struct pri *pri);
 
 void pri_schedule_del(struct pri *ctrl, unsigned id);
 int pri_schedule_check(struct pri *ctrl, unsigned id, void (*function)(void *data), void *data);
+
+void arinc_schedule_del(struct pri *ctrl, unsigned id);
+int arinc_schedule_check(struct pri *ctrl, unsigned id, void (*function)(void *data), void *data);
 
 extern pri_event *pri_mkerror(struct pri *pri, char *errstr);
 

@@ -70,6 +70,38 @@
 #define PRI_SWITCH_ARINC		21 /* ARINC Protocol */
 /* Switchtypes 11 - 20 are reserved for internal use */
 
+/* ARINC SAPI Override */
+/* Simple states */
+#define ARINC_STATE_DOWN                0
+#define ARINC_STATE_UP                  1
+
+#define ARINC_PROGRESS_MASK
+#define ARINC_PROGRESS                  0x03
+#define ARINC_SETUP                     0x05
+#define ARINC_CHANNEL_IDENT             0x18
+#define ARINC_PROGRESS_INDICATOR        0x1e
+
+#define ARINC_SAPI_CALLCTRL             0       /* E1 EuroISDN variant (ARINC 746) */
+#define ARINC_SAPI_EQMTCTRL             2       /* E1 EuroISDN variant (ARINC 746) */
+
+/* ARINC Attribute Identifers */
+#define ARINC_AIR_TO_GROUND_LINK_STATUS                0x55
+#define ARINC_AIRCRAFT_ID                              0x56
+#define ARINC_AVAILABILITY_STATUS                      0x57
+#define ARINC_CTU_AVAILABILITY_STATUS                  0x15
+#define ARINC_DATE_AND_TIME                            0x58
+#define ARINC_SATCOM_STATUS                            0x59
+#define ARINC_SATCOM_CAPABILITIES                      0x5A
+#define ARINC_PACKET_DATA_AVAILABILITY_STATUS          0x5B
+#define ARINC_SATCOM_LOGON_INFORMATION                 0x5C
+#define ARINC_CTU_CAPABILITIES                         0x5D
+#define ARINC_WOW_INDICATOR                            0x0F
+#define ARINC_LOGON_VALUE_OCEAN_REGION                 0x3F
+#define ARINC_CLASS_NATS                               0x04
+#define ARINC_CLASS_CTU                                0x05
+#define ARINC_CLASS_SATCOM                             0x19
+#define ARINC_CLASS_TFTS                               0x1A
+  
 
 /* PRI D-Channel Events */
 #define PRI_EVENT_DCHAN_UP		 1	/* D-channel is up */
@@ -2262,6 +2294,60 @@ void pri_date_time_send_option(struct pri *ctrl, int option);
 int pri_set_timer(struct pri *pri, int timer, int value);
 int pri_get_timer(struct pri *pri, int timer);
 int pri_timer2idx(const char *timer_name);
+
+enum ARINC_TIMERS_AND_COUNTERS {
+	ARINC_TIMER_N200,	/*!< Maximum numer of Q.921 retransmissions */
+	ARINC_TIMER_N202,	/*!< Maximum numer of transmissions of the TEI identity request message */
+	ARINC_TIMER_K,	/*!< Maximum number of outstanding I-frames */
+
+	ARINC_TIMER_T200,	/*!< Time between SABME's */
+	// ARINC_TIMER_T201,	/*!< Minimum time between retransmissions of the TEI Identity check messages */
+	ARINC_TIMER_T202,	/*!< Minimum time between transmission of TEI Identity request messages */
+	ARINC_TIMER_T203,	/*!< Maximum time without exchanging packets */
+
+	//ARINC_TIMER_T300,
+	//ARINC_TIMER_T301,	/*!< Maximum time to respond to an ALERT */
+	//ARINC_TIMER_T302,
+	//ARINC_TIMER_T303,	/*!< Maximum time to wait after sending a SETUP without a response */
+	//ARINC_TIMER_T304,
+	ARINC_TIMER_T305,	/*!< Wait for DISCONNECT acknowledge */
+	//ARINC_TIMER_T306,
+	//ARINC_TIMER_T307,
+	ARINC_TIMER_T308,	/*!< Wait for RELEASE acknowledge */
+	//ARINC_TIMER_T309,	/*!< Time active calls can tollerate data link layer being down before clearing. */
+	//ARINC_TIMER_T310,	/*!< Maximum time between receiving a CALL_PROCEEDING and receiving a ALERT/CONNECT/DISCONNECT/PROGRESS */
+	ARINC_TIMER_T313,	/*!< Wait for CONNECT acknowledge, CPE side only */
+	//ARINC_TIMER_T314,
+	//ARINC_TIMER_T316,	/*!< Maximum time between transmitting a RESTART and receiving a RESTART ACK */
+	//ARINC_TIMER_T317,
+	//ARINC_TIMER_T318,
+	//ARINC_TIMER_T319,
+	//ARINC_TIMER_T320,
+	//ARINC_TIMER_T321,
+	//ARINC_TIMER_T322,
+
+	ARINC_TIMER_TA01,
+	ARINC_TIMER_TA10,
+
+	ARINC_TIMER_TM20,	/*!< Maximum time awaiting XID response */
+	ARINC_TIMER_NM20,	/*!< Number of XID retransmits */
+
+	ARINC_TIMER_T_HOLD,	/*!< Maximum time to wait for HOLD request response. */
+	ARINC_TIMER_T_RETRIEVE,	/*!< Maximum time to wait for RETRIEVE request response. */
+
+	ARINC_TIMER_T_RESPONSE,	/*!< Maximum time to wait for a typical APDU response. */
+
+	ARINC_TIMER_T_STATUS,		/*!< Max time to wait for all replies to check for compatible terminals */
+
+	ARINC_TIMER_T_ACTIVATE,	/*!< Request supervision timeout. */
+	ARINC_TIMER_T_DEACTIVATE,	/*!< Deactivate supervision timeout. */
+	ARINC_TIMER_T_INTERROGATE,/*!< Interrogation supervision timeout. */
+
+	/* Must be last in the enum list */
+	ARINC_MAX_TIMERS
+};
+
+/*! New configurable timers and counters must be added to the end of the list */
 
 /*! New configurable timers and counters must be added to the end of the list */
 enum PRI_TIMERS_AND_COUNTERS {
