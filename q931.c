@@ -393,6 +393,793 @@ struct ie {
 	FUNC_SEND(*transmit);
 };
 
+struct arinc_ie {
+	/* Maximal count of same IEs at the message (0 - any, 1..n - limited) */
+	int max_count;
+	/* IE code */
+	int ie;
+	/* IE friendly name */
+	char *name;
+	/* Dump an IE for debugging (preceed all lines by prefix) */
+	ARINC_FUNC_DUMP(*dump);
+	/* Handle IE  returns 0 on success, -1 on failure */
+	ARINC_FUNC_RECV(*receive);
+	/* Add IE to a message, return the # of bytes added or -1 on failure */
+	ARINC_FUNC_SEND(*transmit);
+};
+
+//static struct arinc_msgtype arinc_eqmtctrl_causes[] = { 
+//	{ ARINC_EQMTCTRL_CAUSE_CLASS_INSTANCE_CONFLICT, " Class/instance conflict " }, /* 01 */
+//	{ ARINC_EQMTCTRL_CAUSE_DUPLICATE_INVOCATION,    " Duplicate invocation " },    /* 02 */
+//	{ ARINC_EQMTCTRL_CAUSE_INCORRECT_LENGTH,        " Incorrect length " },        /* 03 */
+//	{ ARINC_EQMTCTRL_CAUSE_INVALID_ARGUMENT_VALUE,  " Invalid argument value " },  /* 04 */
+//	{ ARINC_EQMTCTRL_CAUSE_INVALID_ATTRIBUTE_VALUE, " Invalid attribute value " }, /* 05 */
+//	{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_ARGUMENT,        " No such argument " },        /* 09 */
+//	{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_ATTRIBUTE,       " No such attribute " },       /* 0A */
+//	{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_EVENT_TYPE,      " No such event type " },      /* 0B */
+//	{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_MESSAGE_TYPE,    " No such message type " },    /* 0C */
+//	{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_CLASS,    " No such object class " },    /* 0D */
+//	{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_INSTANCE, " No such object instance " }, /* 0E */
+//	{ ARINC_EQMTCTRL_CAUSE_PROCESSING_FAILURE,      " Processing failure " },      /* 0F */
+//	{ ARINC_EQMTCTRL_CAUSE_UNRECOGNIZED_OPERATION,  " Unrecognized operation " },  /* 10 */
+//};
+
+static char *class2str(int class)
+{
+	static struct arinc_msgtype classes[] = {
+		{ 0x04, "NATS" },
+		{ 0x05, "CTU" },
+		{ 0x19, "SATCOM" },
+		{ 0x1A, "TFTS" },		
+	};
+	return arinc_q931_code2str(class, classes, sizeof(classes) / sizeof(classes[0]));
+}
+
+static char *event_type2str(int event_type)
+{
+	static struct arinc_msgtype event_types[] = {
+		{ 0x1e, "Status Change" },
+		{ 0x3c, "Weight-On-Wheels" },
+		{ 0x3f, "Air-ground Status" },
+		{ 0x4b, "Capabilities Change" },
+		{ 0x00, "Altitude" },
+		{ 0x01, "TFTS Availability" },
+		{ 0x02, "BITE Status" },
+		{ 0x03, "Page Request" },
+		{ 0x04, "EngPage Request" },
+		{ 0x05, "Handover Indication" },
+	};
+	return arinc_q931_code2str(event_type, event_types, sizeof(event_types) / sizeof(event_types[0]));
+}
+
+static char *errors2str(int arinc_error)
+{
+	static struct arinc_msgtype errors[] = { 
+		{ ARINC_EQMTCTRL_CAUSE_CLASS_INSTANCE_CONFLICT, " Class/instance conflict " }, /* 01 */
+		{ ARINC_EQMTCTRL_CAUSE_DUPLICATE_INVOCATION,    " Duplicate invocation " },    /* 02 */
+		{ ARINC_EQMTCTRL_CAUSE_INCORRECT_LENGTH,        " Incorrect length " },        /* 03 */
+		{ ARINC_EQMTCTRL_CAUSE_INVALID_ARGUMENT_VALUE,  " Invalid argument value " },  /* 04 */
+		{ ARINC_EQMTCTRL_CAUSE_INVALID_ATTRIBUTE_VALUE, " Invalid attribute value " }, /* 05 */
+		{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_ARGUMENT,        " No such argument " },        /* 09 */
+		{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_ATTRIBUTE,       " No such attribute " },       /* 0A */
+		{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_EVENT_TYPE,      " No such event type " },      /* 0B */
+		{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_MESSAGE_TYPE,    " No such message type " },    /* 0C */
+		{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_CLASS,    " No such object class " },    /* 0D */
+		{ ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_INSTANCE, " No such object instance " }, /* 0E */
+		{ ARINC_EQMTCTRL_CAUSE_PROCESSING_FAILURE,      " Processing failure " },      /* 0F */
+		{ ARINC_EQMTCTRL_CAUSE_UNRECOGNIZED_OPERATION,  " Unrecognized operation " },  /* 10 */
+	};
+
+	return arinc_q931_code2str(arinc_error, errors, sizeof(errors) / sizeof(errors[0]));
+}
+
+static char *attributes2str(int attr_id)
+{
+
+	static struct arinc_msgtype attribute_ids[] = { 
+		{ ARINC_AIR_TO_GROUND_LINK_STATUS,           " Air-to-Ground Lins Status " },
+		{ ARINC_AIRCRAFT_ID,                         " Aircraft I.D. " },
+		{ ARINC_AVAILABILITY_STATUS,                 " Availability Status " },
+		{ ARINC_CTU_AVAILABILITY_STATUS,             " CTU Availability Status " },
+		{ ARINC_DATE_AND_TIME,                       " Date and Time " },
+		{ ARINC_SATCOM_STATUS,                       " SATCOM Status " },
+		{ ARINC_SATCOM_CAPABILITIES,                 " SATCOM Capabilities " },
+		{ ARINC_WOW_INDICATOR,                       " WOW Indicator " },
+		{ ARINC_PACKET_DATA_AVAILABILITY_STATUS,     " Packet Data Availability Status " },
+		{ ARINC_SATCOM_LOGON_INFORMATION,            " SATCOM Logon Information " },
+		{ ARINC_CTU_CAPABILITIES,                    " CTU Capabilities " },
+	};
+
+	return arinc_q931_code2str(attr_id, attribute_ids, sizeof(attribute_ids) / sizeof(attribute_ids[0]));
+}
+
+static void dump_invoke_identifier(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	pri_message(ctrl, "%c Invoke Indentifier (len=%2d) [ Value= %d ]\n", prefix, ie->len, ie->data[0]);
+}
+
+static void dump_managed_object_class(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	pri_message(ctrl, "%c Managed Object Class (len=%2d) [ Value= %d, Object Class: %s]\n", 
+					prefix, ie->len, ie->data[0], class2str(ie->data[0]));
+}
+
+static void dump_managed_object_instance(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	pri_message(ctrl, "%c Managed Object Instance (len=%2d) [ Value= %d ]\n", 
+		prefix, ie->len, ie->data[0]);
+}
+
+static void dump_event_type(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	pri_message(ctrl, "%c Event Type (len=%2d) [ Value= %d, Report: %s]\n", 
+		prefix, ie->len, ie->data[0],event_type2str(ie->data[0]));
+}
+
+static void dump_errors(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	int x;
+	for (x=0; x<(len-2); x++){
+	pri_error(ctrl, "%c Errors (len=%2d) [ Code# %d, Error[0x%X]: %s]\n", 
+		prefix, ie->len, (x+1), ie->data[x], errors2str(ie->data[x]));
+	}
+}
+
+static void dump_event_reply(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+
+	char *reply_code;
+	if (len!=3) pri_error(ctrl, "%c IE LENGTH ERROR(len=%2d)\n", prefix, len);
+
+	switch(ie->data[0]){
+	case 0: reply_code = "Accepted";
+		break;
+	case 1: reply_code = "Rejected";
+		break;
+	default: reply_code = "Unknown code";
+	}
+	pri_message(ctrl, "%c Event Reply (len=%2d) [%s]\n", 
+		prefix, ie->len, reply_code);
+}
+
+static void dump_attribute_id_list(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+
+	int x;
+	for (x=0; x<(len-2); x++){
+	pri_message(ctrl, "%c Attribute Identifiers List (len=%2d) [ ID# %d, [0x%X]: %s]\n", 
+		prefix, ie->len, (x+1), ie->data[x], attributes2str(ie->data[x]));
+	}
+} 
+
+static void dump_attribute_list(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	
+	int x;
+	int y = 0;
+	int attrib_id;
+	int value_list_len;
+	while (y < (len-2) ) {
+		attrib_id = ie->data[y++];
+		value_list_len= ie->data[y++];
+		for (x=0; x<(value_list_len); x++){
+				pri_message(ctrl, "%c Attribute List (len=%2d) [ ID# %d, %s [Value#%d: 0x%X]]\n", 
+				prefix, ie->len, attrib_id, attributes2str(attrib_id),(x+1), ie->data[y++]);
+		}
+	}
+}
+
+static void dump_original_attribute_list(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	int y = 0;
+	int attrib_id;
+	while (y < (len-2) ) {
+		attrib_id = ie->data[y++];
+			pri_message(ctrl, "%c Original Attribute List (len=%2d) [ %s [Value#: 0x%X]]\n", 
+			prefix, ie->len, attributes2str(attrib_id), ie->data[y++]);
+
+	}
+}
+
+static void dump_arinc_time(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+
+	if (len!=9) pri_error(ctrl, "%c TIME LENGTH ERROR(len=%2d)\n", prefix, len);
+		
+	pri_message(ctrl, "%c %s (len=%2d) [mm/dd/yyyy %2X/%2X/%2X%2X , hh:mm:ss  %2X:%2X:%2X]\n", 
+						prefix, arinc_ie2str(ie->ie), ie->len, ie->data[2], ie->data[3], ie->data[0], ie->data[1], ie->data[4], ie->data[5], ie->data[6]);
+}
+
+static char arinc_callback_digits[16] = {" 1234567890*#  N"};
+static void dump_engpage_callback_number(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	int x;
+	char number[17];	
+	if (len > 10) pri_error(ctrl, "%d is too many digits in EngPage \n",len);	
+	for (x=0; x<(len-2); x++){
+		number[x+x] =   arinc_callback_digits [ (ie->data[x])>>4 ];
+		number[x+x+1] = arinc_callback_digits [ (ie->data[x])&0x0F ];
+	}
+	number[x+x] = '\0';
+	pri_message(ctrl, "%c EngPage Callback Number (len=%2d) [ %s ] ]\n", 
+		prefix, ie->len, number);
+}
+
+static void dump_paging_callback_number(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	int x;
+	char number[17];
+	if (len > 10) pri_error(ctrl, "%d is too many digits in EngPage \n",len);		
+	for (x=0; x<(len-2); x++){
+		number[x+x] =   arinc_callback_digits [ (ie->data[x])>>4 ];
+		number[x+x+1] = arinc_callback_digits [ (ie->data[x])&0x0F ];
+	}
+	number[x+x] = '\0';
+	pri_message(ctrl, "%c Paging Callback Number (len=%2d) [ %s ] ]\n", 
+		prefix, ie->len, number);
+}
+
+static void dump_paging_callback_extension(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+        int x;
+        char number[17];
+        if (len > 10) pri_error(ctrl, "%d is too many digits in EngPage \n",len);
+        for (x=0; x<(len-2); x++){
+                number[x+x] =   arinc_callback_digits [ (ie->data[x])>>4 ];
+                number[x+x+1] = arinc_callback_digits [ (ie->data[x])&0x0F ];
+        }
+        number[x+x] = '\0';
+        pri_message(ctrl, "%c Paging Callback Extension (len=%2d) [ %s ] ]\n",
+                prefix, ie->len, number);
+}
+
+static void dump_paging_callback_number_type(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	int x;
+	
+	for (x=0; x<(len-2); x++){
+	pri_message(ctrl, "%c Pagin Callback Number Type (len=%2d) [ ID# %d, dd[0x%X] ]\n", 
+		prefix, ie->len, (x+1), (ie->data[x]));
+	}
+}
+
+static void dump_paging_registration(int full_ie, struct pri *ctrl, arinc_q931_ie *ie, int len, char prefix) {
+	int x;
+        char number[17];
+        if (len > 10) pri_error(ctrl, "%d is too many digits in EngPage \n",len);
+        for (x=0; x<(len-2); x++){
+                number[x+x] =   arinc_callback_digits [ (ie->data[x])>>4 ];
+                number[x+x+1] = arinc_callback_digits [ (ie->data[x])&0x0F ];
+        }
+        number[x+x] = '\0';
+        pri_message(ctrl, "%c Paging Registration (len=%2d) [ %s ] ]\n",
+                prefix, ie->len, number);
+}
+
+// Receive functions
+
+static int receive_invoke_identifier(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	event->ir = ie->data[0];
+	return 3;
+}
+
+
+static int receive_managed_object_class(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	if (ie->data[0] != event->managed_object) {
+		pri_error(ctrl, DBGHEAD "!! Received Message managed_object %d not the Expected managed_object: %d\n", DBGINFO, ie->data[0], event->managed_object);
+		//arinc_q931_add_error(event, ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_CLASS); /* 0x0D */
+		return -1;
+	}
+	event->managed_object = ie->data[0];
+	return 0;
+}
+
+static int receive_managed_object_instance(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	if (ie->data[0] != 1) {
+		pri_error(ctrl, "!! Only one object instance is allowed\n");
+		//arinc_q931_add_error(call, ARINC_EQMTCTRL_CAUSE_NO_SUCH_OBJECT_INSTANCE); /* 0x0E */
+		return -1;
+	}
+	event->managed_object_instance = ie->data[0];
+	return 0;
+}
+
+static int receive_attribute_id_list(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	int x;
+	int ie_length;
+
+	event->attrib_list[0] = ie->len;
+	ie_length = ie->len;
+
+	for (x=0; x < ie_length; x++) {
+        /* The array is a list of subelements of the form
+         * (Identifer,number of values, values)*/
+		event->attrib_list[x+1]=ie->data[x];
+	}
+	return 0;
+
+}
+
+static int receive_event_type(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	/* Only Report Status Change for now.  Others are for other than SATCOM units*/
+	if (ie->data[0] > 0x1E) {
+		pri_error(ctrl, "!! ARINC Event type not implemented\n");
+		return -1;
+	}
+	event->event_type = ie->data[0];
+	return 0;
+}
+
+static int receive_event_reply(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	/* Only the ACCEPTED reply is expected, REJECTED is ignored but printed */
+	switch (ie->data[0]) {
+	case 0: /* ACCEPTED */
+		event->acked = 1;
+		break;
+	case 1: /* REJECTED */
+		pri_error(ctrl, "!! ARINC Reply contained REJECTED \n");
+		event->acked = 0;
+		break;
+	default:
+		pri_error(ctrl, "!! ARINC Event type not implemented: %i\n", ie->data[0]);
+		return -1;
+	}
+	event->event_reply = ie->data[0];
+	return 0;	
+}
+
+static int receive_errors(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	int n, length;
+	/* This could be a list of errors with ending based on ie->len */
+	if (ie->len) {
+		pri_error(ctrl, "!! ARINC Error element empty \n");
+		return -1;
+	}
+	length = ie->len;
+	for (n=1; n<length; n++) {
+		/* No other processing defined. So each error is simple sent to arinc_error for now
+		 The values could be verify against the cause table and the causes structure used 
+		 to print the errrors 
+		 */
+		pri_error(ctrl, "!! ARINC ERRORS ELEMENT RECEIVED\n");
+	}
+	return 0;
+	/* This could be improved by returning another errors element with another cause but 
+	 * this seems an extra state not defiend in the protocol */
+}
+
+static int receive_current_time(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+
+        /* Time elements in BCD format */
+        if ( (ie->data[0] & 0xF0) > 0x90 || (ie->data[0] & 0x0F) > 0x09) {
+                pri_error(ctrl, "!! ARINC invalid century in time element\n");
+        } else {
+                event->century = ie->data[0]; /* Century AD 00-99 */
+        }
+        if ((ie->data[1] & 0xF0) > 0x90 || (ie->data[1] & 0x0F) > 0x09) {
+                pri_error(ctrl, "!! ARINC invalid year in time element\n");
+        } else {
+                event->year = ie->data[1]; /* year 00-99 */
+        }
+        if (ie->data[2] > 0x12 || (ie->data[2] & 0x0F) > 0x09 || ie->data[2]
+                        == 0x00) {
+                pri_error(ctrl, "!! ARINC invalid month in time element\n");
+        } else {
+                event->month = ie->data[2]; /* Month 01 - 12 */
+        }
+        if (ie->data[3] > 0x31 || (ie->data[3] & 0x0F) > 0x09 || ie->data[3]
+                        == 0x00) {
+                pri_error(ctrl, "!! ARINC invalid day in time element\n");
+        } else {
+                event->day = ie->data[3]; /* Day 01 - 31 */
+        }
+        if (ie->data[4] > 0x23 || (ie->data[4] & 0x0F) > 0x09) {
+                pri_error(ctrl, "!! ARINC invalid hour in time element\n");
+        } else {
+                event->hour = ie->data[4]; /* Hour 00 - 23 */
+        }
+        if (ie->data[5] > 0x59 || (ie->data[5] & 0x0F) > 0x09) {
+                pri_error(ctrl, "!! ARINC invalid minute in time element\n");
+        } else {
+                event->minute = ie->data[5]; /* Hour 00 - 59 */
+        }
+        if (ie->data[6] > 0x59 || (ie->data[6] & 0x0F) > 0x09) {
+                pri_error(ctrl, "!! ARINC invalid second in time element\n");
+        } else {
+                event->second = ie->data[6]; /* Second 00 - 59 */
+        }
+        return 0;
+
+}
+
+
+
+
+static int receive_event_information(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	int x;
+	/* This IE is defined as legacy IE 21 
+	 * Event Information is defined as an attribute_list for all event types 
+	 * except for 
+	 * Report Paging Request and Report EngPage Request
+	 * and not an IE per se..Paging is not a SATCOM function and
+	 * therefore the Paging IEs are not implemented at this time.
+	 * todo: Use of  E 21 could be responded with the 
+	 * Unrecognized operation error  
+	 */
+	//  len = ie->data[0];
+	event->attrib_list[0] = ie->len;
+	/* if len =0, then no attributes will be sent in the response
+	 * ARINC 746-5  is not clear on this condition being an error
+	 * so a response seems appropriate
+	 * */
+	for (x=0; x<len; x++) {
+		/* for IE 21 this array is a set of (Identifier,Value) attribute tuples */
+		event->attrib_list[x+1]=ie->data[x];
+	}
+	return 0;
+}
+
+static int receive_attribute_list(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len) {
+	int x;
+	/* 
+	 * This IE contains the response to a GET REQUEST or an 
+	 * Event report REQUEST status parameter. 
+	 * 
+	 * This could be stored and logged but no action is 
+	 * planned for the SATCOM simlation. Future simulation
+	 * of other units may require futher interpretion and action
+	 * */
+	//  len = ie->data[0]; from argument
+	// printf("AFUNC_RECV(receive_attribute_list): len:%d\n",len);
+	event->attrib[0] = ie->len;
+	/* ************************************************************
+	 * if len =0, then no attributes exist .
+	 * ARINC 746-5  is not clear on this condition being an error
+	 * so no error is created but an "incorrect length" error might
+	 * be an alternate response 
+	 * 
+	 * ************************************************************/
+	for (x=0; x<len; x++) {
+		event->attrib[x+1]=ie->data[x];
+	}
+	return 0;
+}
+
+// Transmit functions
+
+static int transmit_invoke_identifier(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	ie->data[0] = event->ir;
+	// ie->data[0] = 0x4F;
+	return 3;
+}
+
+static int transmit_current_time(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+        /* Time elements in BCD format with default values from SIU (from traces - JE) */
+        ie->data[0] = 0xFF; /* Century AD  */
+        ie->data[1] = 0xFF; /* Year within century */
+        ie->data[2] = 0xFF; /* Month */
+        ie->data[3] = 0xFF; /* Day */
+        ie->data[4] = 0xFF; /* Hour */
+        ie->data[5] = 0xFF; /* Minute */
+        ie->data[6] = 0xFF; /* Second  */
+        return 9;
+}
+
+
+
+static int transmit_managed_object_class(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	// ie->data[0] = event->managed_object;
+	// Josh Modification for CTU Class Set TODO: clean this up
+	ie->data[0] = 0x05;
+	// ie->data[1] = 0x05;
+	return 3;
+}
+
+static int transmit_managed_object_instance(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	ie->data[0] = 0x01;
+	return 3;
+}
+
+static int transmit_attribute_id_list(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	// JE Killed This, Because these are SATCOM crap TODO - fix this betterer
+	//ie->data[0] = ARINC_AVAILABILITY_STATUS; /* Availability (CTU assumed)*/
+	//ie->data[1] = ARINC_CTU_CAPABILITIES; /* 0x5D  */
+	return 0;
+}
+
+static int transmit_event_type(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	if((event->ourinvokestate) == ARINC_INVOCATION_STATE_PROCESSING_REQUEST)
+		ie->data[0] = event->event_type;
+	else
+		ie->data[0] = 0x1E; /* only Report Status change implemented */
+	/* TODO: use a parameter from event struct to select for other events */
+	return 3;	
+}
+
+static int transmit_event_reply(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	ie->data[0] = 0x00; /* only the ACCEPTED case is implemented */
+	/*TODO: use a parameter from event struct to select for other events */
+	return 3;
+}
+
+static int transmit_errors(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	int n;
+	int num_errors;
+	/* We are ready to transmit single IE only */
+	/* this check for no errors could be done before the IE is added */
+	if (event->errorlist[0]) {
+		return -1; /* no IE required,  return of -1 signals that the Element Identfier and Length need to be removed on return */
+	}
+	num_errors = event->errorlist[0];
+	for (n=0; n < num_errors; n++) {
+		ie->data[n] = event->errorlist[n+1];
+	}
+	return n+2;
+}
+
+static int transmit_attribute_list(int full_ie, struct pri *ctrl, struct arinc_invocation *event, int msgtype, arinc_q931_ie *ie, int len, int order) {
+	int n;
+	int pos;
+	int num_attrib = 0;
+
+		/* 
+	 event is the pointer to this invocation event structure
+	 Attrib[Max_supported_attributes+1] is an array of attribute identifiers with attrib[0] being the number of identifiers.
+	 This is the format of the attribute identifier list of the GET command and this list can be simply copied for the response process
+	 */
+
+	if(!event->attrib[0]) {
+		pri_error(ctrl, "ERROR: Attribute list generation call->attrib[0] == NULL!\n");
+		return 0;
+	}
+
+	num_attrib = event->attrib[0];
+
+	//  arinc_message(ecl->master, DBGHEAD "\n\t /* Attribute list generation: num_attrib: %d\n",DBGINFO,num_attrib);           
+
+	// JE TODO: validate whether this assumption is ARINC standard valid - this seems fishy
+	if (num_attrib == 0 || num_attrib > 5) { /* 5 is the  MAX number of attributes supported in this version */
+	//      arinc_message(ecl->master, DBGHEAD "\n\t /* TESTING! Attribute list generation return 0;%d\n",DBGINFO,num_attrib);          
+		return 0; /* no attributes in list */
+	}
+
+	/* Loop to include attribute identifiers and values from the identifier list created 
+	 by either a peer request or by a local event  */
+	pos = 0;
+	for (n=1; n<=num_attrib; n++) {
+	//      int y =call->attrib[n];
+	//      arinc_message(ecl,DBGHEAD "call->attrib[%d] of num_attrib: %d\n",DBGINFO,n,num_attrib);
+		switch (event->attrib[n]) {
+		case ARINC_AIRCRAFT_ID:
+			/* send Attribute value */
+			ie->data[pos+0] = ARINC_AIRCRAFT_ID; /* octet N */
+			ie->data[pos+1] = 4; /* octet N+1 */
+			ie->data[pos+2] = 0x00; /* Octet N+2 ICAO  */
+			ie->data[pos+3] = 0x31; /* Default fixed value is 001122233 */
+			ie->data[pos+4] = 0x32; /*  */
+			ie->data[pos+5] = 0x33; /*  */
+			pos = pos +6;
+			break;
+		//case ARINC_SATCOM_STATUS:
+		//	/* send SATCOM_status Attribute value */
+		//	ie->data[pos+0] = ARINC_SATCOM_STATUS; /* octet N */
+		//	ie->data[pos+1] = 1; /* octet N+1  */
+		//	ie->data[pos+2] = arinc_satcom_eqmtctrl_current_status_get(); /* Octet N+2   */
+		//	pos=pos+3;
+		//	break;
+		case ARINC_AVAILABILITY_STATUS:
+			/* send CTU Availability Status Attribute value */
+			// TODO: Decide on which standard to use
+			// NEW STANDARD
+			ie->data[pos+0] = ARINC_AVAILABILITY_STATUS; /* octet N */
+			ie->data[pos+1] = 1; /* octet N+1 - sets octed length for CTU available */
+			ie->data[pos+2] = 0x01; /* octet N+2  */
+			pos=pos+3;
+
+			// LEGACY STANDARD	
+			//ie->data[pos+0] = ARINC_AVAILABILITY_STATUS; /* octet N */
+			//ie->data[pos+2] = 0x01; /* octet N+2  */
+			//pos=pos+2;
+			
+			// TODO FIX THIS
+			// ie->data[pos+2] = arinc_satcom_eqmtctrl_current_status_get(); /* Octet N+2   */
+			break;
+		case ARINC_SATCOM_CAPABILITIES:
+			/* send SATCOM_capabilites Attribute value */
+			ie->data[pos+0] = ARINC_SATCOM_CAPABILITIES; /* octet N */
+			ie->data[pos+1] = 1; /* octet N+1  */
+			ie->data[pos+2] = 0; /* Octet N+2  no special capabilities  */
+			pos=pos+3;
+			break;
+		case ARINC_PACKET_DATA_AVAILABILITY_STATUS:
+			/* send Packet_data_availability_status Attribute value */
+			ie->data[pos+0] = ARINC_PACKET_DATA_AVAILABILITY_STATUS; /* octet N */
+			ie->data[pos+1] = 1; /* octet N+1  */
+			ie->data[pos+2] = 0x00; /* Octet N+2  no special capabilities  */
+			pos=pos+3;
+			break;
+		case ARINC_SATCOM_LOGON_INFORMATION:
+			/* send SATCOM_logon_information Attribute value */
+			ie->data[pos+0] = ARINC_SATCOM_LOGON_INFORMATION; /* octet N */
+			ie->data[pos+1] = 1; /* octet N+1  */
+			ie->data[pos+2] = ARINC_LOGON_VALUE_OCEAN_REGION; /* Octet N+2 0x3F  */
+			pos=pos+3;
+			break;
+		default:
+			pri_error(NULL, "ARINC Unsupported Attribute found in list: %d n", event->attrib[n]);
+			/* flag the insertion of the errors IE with the cause 0x0A :
+			 ARINC_EQMTCTRL_CAUSE_NO_SUCH_ATTRIBUTE */
+			//arinc_q931_add_error(call, ARINC_EQMTCTRL_CAUSE_NO_SUCH_ATTRIBUTE);
+			break;
+		}
+	};
+	// pri_error(ctrl, "*** RETURNING WITH AN OFFSET OF TWO on '%s' ___ MYSTERY SOLVED???\n", arinc_ie2str(event->attrib[n]));
+	// return pos+2;
+	return pos+2;
+}
+
+
+//static struct arinc_ie arinc_ies[] = {
+	/* ARINC ECL Information Elements */ 
+/*
+	{ 1, ARINC_INVOKE_IDENTIFIER, "Invoke Identifier", dump_invoke_identifier,
+			receive_invoke_identifier, transmit_invoke_identifier}, 
+	{ 1, ARINC_MANAGED_OBJECT_CLASS, "Managed Object Class", dump_managed_object_class,
+			receive_managed_object_class, transmit_managed_object_class},
+	{ 1, ARINC_MANAGED_OBJECT_INSTANCE, "Managed Object Instance", dump_managed_object_instance,
+			receive_managed_object_instance,transmit_managed_object_instance}, 
+	{ 1, ARINC_CURRENT_TIME,"Current Time", dump_arinc_time, 
+			receive_current_time,transmit_current_time }, 
+	{ 1, ARINC_EVENT_TYPE, "Event Type",dump_event_type, 
+			receive_event_type, transmit_event_type}, 
+	{ 1, ARINC_EVENT_TIME, "Event Time", dump_arinc_time, 
+			receive_event_time,transmit_event_time},
+	{ 1, ARINC_EVENT_REPLY, "Event Reply", dump_event_reply, 
+			receive_event_reply,transmit_event_reply}, 
+	{ 1, ARINC_ATTRIBUTE_IDENTIFIER_LIST,"Attribute Identifier List", dump_attribute_id_list,
+			receive_attribute_identifier_list,transmit_attribute_identifier_list },
+	{ 1, ARINC_EVENT_INFORMATION, "Event Information", dump_original_attribute_list,
+			receive_event_information, transmit_event_information }, 
+	{ 1, ARINC_ATTRIBUTE_LIST, "Attribute List", dump_attribute_list,
+			receive_attribute_list, transmit_attribute_list},
+	{ 1, ARINC_ERRORS, "Errors", dump_errors, 
+			receive_errors, transmit_errors}, 
+	{ 1, ARINC_ENGPAGE_CALLBACK_NUMBER, "EngPage Callback Number", dump_EngPage_Callback_Number, 
+			 receive_EngPage_Callback_Number, transmit_EngPage_Callback_Number  },
+	{ 1, ARINC_PAGING_CALLBACK_NUMBER, "Paging Callback Number", dump_paging_callback_number, 
+			 receive_paging_callback_number, transmit__paging_callback_number },		
+	{ 1, ARINC_PAGING_CALLBACK_EXTENSION, "Paging Callback Extension", dump_paging_callback_extension, 
+			receive_paging_callback_extension, transmit_paging_callback_extension },
+	{ 1, ARINC_PAGING_CALLBACK_NUMBER_TYPE, "Paging Callback Number Type", dump_paging_callback_number_type, 
+			 receive_paging_callback_number_type, transmit_paging_callback_number_type  },
+	{ 1, ARINC_PAGING_REGISTRATION, "Paging Registration", dump_paging_registration, 
+			 receive_paging_registration, transmit_registration  },
+};
+*/
+
+static struct arinc_ie arinc_ies[] = {
+    /* ARINC ECL Information Elements */ 
+    { 1, ARINC_INVOKE_IDENTIFIER, "Invoke Identifier", dump_invoke_identifier, receive_invoke_identifier, transmit_invoke_identifier },
+    { 1, ARINC_MANAGED_OBJECT_CLASS, "Managed Object Class", dump_managed_object_class, receive_managed_object_class, transmit_managed_object_class },
+    { 1, ARINC_MANAGED_OBJECT_INSTANCE, "Managed Object Instance", dump_managed_object_instance, receive_managed_object_instance, transmit_managed_object_instance },
+    { 1, ARINC_CURRENT_TIME,"Current Time", dump_arinc_time, receive_current_time, transmit_current_time},
+    { 1, ARINC_EVENT_TYPE, "Event Type",  dump_event_type, receive_event_type, transmit_event_type },
+    { 1, ARINC_EVENT_TIME, "Event Time", dump_arinc_time },
+    { 1, ARINC_EVENT_REPLY, "Event Reply", dump_event_reply, receive_event_reply, transmit_event_reply },
+    { 1, ARINC_ATTRIBUTE_IDENTIFIER_LIST,"Attribute Identifier List", dump_attribute_id_list, receive_attribute_id_list, transmit_attribute_id_list },
+    { 1, ARINC_EVENT_INFORMATION, "Event Information", dump_original_attribute_list, receive_event_information },
+    { 1, ARINC_ATTRIBUTE_LIST, "Attribute List", dump_attribute_list, receive_attribute_list, transmit_attribute_list },
+    { 1, ARINC_ERRORS, "Errors", dump_errors, receive_errors, transmit_errors } ,
+    { 1, ARINC_ENGPAGE_CALLBACK_NUMBER, "EngPage Callback Number", dump_engpage_callback_number },
+    { 1, ARINC_PAGING_CALLBACK_NUMBER, "Paging Callback Number", dump_paging_callback_number },
+    { 1, ARINC_PAGING_CALLBACK_EXTENSION, "Paging Callback Extension", dump_paging_callback_extension },
+    { 1, ARINC_PAGING_CALLBACK_NUMBER_TYPE, "Paging Callback Number Type", dump_paging_callback_number_type },
+    { 1, ARINC_PAGING_REGISTRATION, "Paging Registration", dump_paging_registration }
+};
+
+static char *arinc_ie2str(int ie) {
+	unsigned int x;
+
+	for (x=0; x<sizeof(arinc_ies) / sizeof(arinc_ies[0]); x++)
+		if (ie == arinc_ies[x].ie)
+			return arinc_ies[x].name;
+	return "Unknown Information Element";
+}
+
+static void arinc_invocation_init(struct pri *ctrl, struct arinc_invocation *c) {
+
+	c->ctrl = ctrl;
+	c->forceinvert = -1; /* may not be needed but might be used for peer IDs */
+	c->ir = -1;
+	c->managed_object = -1;
+	c->managed_object_instance = -1;
+	c->century = -1;
+	c->year = -1;
+	c->month = -1;
+	c->day = -1;
+	c->hour = -1;
+	c->minute = -1;
+	c->second = -1;
+	c->event_type = -1;
+	c->event_reply = -1;
+	c->attrib[0]=0; /*  set nothing in list*/
+	c->errorlist[0]=0; /* set nothing in list */
+	c->attrib_list[0]=0; /* set nothing in list */
+	c->send_object_info_ie= -1; /* Determine this from the config file */
+	c->send_time_ie= -1; /* Determine this from the config file */
+	c->ourinvokestate= Q931_CALL_STATE_NULL; /* Our call state */
+	c->peerinvokestate= Q931_CALL_STATE_NULL;
+	c->newcall = 1; /* ?? Not sure if we need this in ARINC */
+
+}
+
+struct arinc_invocation *arinc_invocation_get(struct pri *ctrl, int cr) {
+
+	struct arinc_invocation *cur, *prev;
+	if(!ctrl) {
+		return NULL;
+	}
+
+	//start at the beginning of the pool
+	cur = *ctrl->invocationpool;
+
+	prev = NULL;
+
+	//loop till the end
+	while (cur) {
+		if (cur->ir == cr)
+		    return cur;
+		prev = cur;
+		cur = cur->next;
+	}
+
+	/* No invocation exists, make a new one */
+	//if (ctrl->debug & PRI_DEBUG_Q931_STATE)
+	if (ctrl->debug)
+		pri_message(ctrl, "-- Making new invocation for #: %d\n", cr);
+
+	if(cur == NULL) {
+		if (!(cur = calloc(1, sizeof(*cur)))) {
+		    pri_error(ctrl, "-- Memory allocation error on new invocation.\n");
+		    return NULL;
+		}
+	}
+
+	arinc_invocation_init(ctrl, cur);
+
+	/* invocation reference */
+	cur->ir = cr;
+
+	/* PRI is set to whoever called us */
+	cur->ctrl = ctrl;
+
+	/* Append to end of list */
+	if (prev)
+		prev->next = cur;
+	else
+		*ctrl->invocationpool = cur;
+
+	return cur;
+}
+
+struct arinc_invocation *arinc_invocation_new(struct pri *ctrl) {
+	struct arinc_invocation *cur;
+
+	if(!ctrl) {
+        	return NULL;
+    	}
+
+	if(!ctrl->invocationpool) {
+		pri_error(ctrl, "ERROR: no invocation pool available, this should be set prior to getting into this routine:\n");
+		return NULL;
+	}
+	/* Most significant bit(MSB) set on id's from us. */
+	do {
+		cur = *ctrl->invocationpool;
+		ctrl->iref++;
+		if (ctrl->iref > 255)
+			ctrl->iref = 0; /* ID 0 has no special significance in ARINC */
+
+		/* PHF: Use MSB =1 to indicate a locally generated Invoke ID and 
+		* MSB=0 for a peer generated ID */
+		while (cur) {
+			if (cur->ir == (0x8000 | ctrl->iref))
+				break;
+			cur = cur->next;
+		}
+
+	} while (cur);
+
+	return arinc_invocation_get(ctrl, ctrl->iref | 0x8000);
+}
+
+
 /*!
  * \internal
  * \brief Encode the channel id information to pass to upper level.
@@ -8171,7 +8958,7 @@ int arinc_q931_send_message(struct q921_link *link, struct arinc_invocation *inv
                         if(strcmp(arinc_satcom_eqmtctrl_current_time_in_responses_get(), "false") == 0) {
                                 if ( arinc_eqmtctrl_ies[x] == ARINC_CURRENT_TIME) {
 					// JOSH - reinserting time, well, just because
-					skip_ie = 1; //TRUE
+					// skip_ie = 1; //TRUE // TODO - expose a knob on this
                                 }
                         }
                 }
