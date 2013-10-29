@@ -2801,6 +2801,10 @@ static int receive_bearer_capability(int full_ie, struct pri *ctrl, q931_call *c
 {
 	int pos = 2;
 
+	if (ctrl->debug) { 
+		pri_message(ctrl, "bearer capability %d & 0x60 = %d\n", ie->data[0], ie->data[0] & 0x60);
+	}
+
 	switch (ie->data[0] & 0x60) {
 	case 0x00:/* ITU-T standardized coding */
 		call->bc.transcapability = ie->data[0] & 0x1f;
@@ -2841,6 +2845,10 @@ static int receive_bearer_capability(int full_ie, struct pri *ctrl, q931_call *c
 		if (pos < len && (ie->data[pos] & 0x60) == 0x60) {
 			call->bc.userl3 = ie->data[pos++] & 0x1f;
 		}
+		break;
+	case 0x60:/* ARINC */
+		call->bc.transcapability = PRI_TRANS_CAP_ARINC_SPEECH;
+		call->bc.transmoderate = TRANS_MODE_64_CIRCUIT;
 		break;
 	case 0x20:/* ISO/IEC standard */
 		if (ie->data[0] == 0xa8 && ie->data[1] == 0x80) {
@@ -7127,7 +7135,7 @@ int q931_connect(struct pri *ctrl, q931_call *c, int channel, int nonisdn)
 		c->progressmask = PRI_PROG_CALLED_NOT_ISDN;
 	} else
 		c->progressmask = 0;
-	if(ctrl->localtype == PRI_NETWORK || ctrl->switchtype == PRI_SWITCH_QSIG)
+	if(ctrl->localtype == PRI_NETWORK || ctrl->switchtype == PRI_SWITCH_QSIG || ctrl->switchtype == PRI_SWITCH_ARINC) // ARINC moves to ACTIVE
 		UPDATE_OURCALLSTATE(ctrl, c, Q931_CALL_STATE_ACTIVE);
 	else
 		UPDATE_OURCALLSTATE(ctrl, c, Q931_CALL_STATE_CONNECT_REQUEST);
