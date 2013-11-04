@@ -8870,7 +8870,7 @@ int arinc_handle_ecl(struct q921_link *link, arinc_q931_h *h, int len)
 	switch (mh->msg) {
 
         	case ARINC_EVENT_REQUEST:
-			pri_message(ctrl, "ARINC: Event Request Received\n");
+			if (ctrl->debug) pri_message(ctrl, "ARINC: Event Request Received\n");
 
 		       	// if (arinc_q931_send_message(link, 0, ARINC_EVENT_RESPONSE, event_response_ies) < 0 )
 		       	if (arinc_q931_send_message(link, event, ARINC_EVENT_RESPONSE, event_response_ies) < 0 )
@@ -8881,7 +8881,7 @@ int arinc_handle_ecl(struct q921_link *link, arinc_q931_h *h, int len)
 		break;
 
 		case ARINC_GET_REQUEST:
-			pri_message(ctrl, "ARINC: Get Request Received\n");
+			if (ctrl->debug) pri_message(ctrl, "ARINC: Get Request Received\n");
 
 			// JE TODO - so I'm going to hard code request response attributes here. 
 			// It is likely we should get a lot smarter about this.
@@ -8906,7 +8906,7 @@ int arinc_handle_ecl(struct q921_link *link, arinc_q931_h *h, int len)
 		break;
 */
         	case ARINC_EVENT_RESPONSE:
-			pri_message(ctrl, "ARINC: Event Response Received, but no handler available in library\n");
+			if (ctrl->debug) pri_message(ctrl, "ARINC: Event Response Received, but no handler available in library\n");
 		break;
 
 	}
@@ -9120,7 +9120,7 @@ int q931_receive(struct q921_link *link, q931_h *h, int len)
 	}
 	switch (h->pd) {
 	case ARINC_EQUIPMENT_CTRL_PROTOCOL_DISCRIMINATOR:
-		pri_message(ctrl, "Received ARINC 746 ECL Equipment Control Message\n");
+		if (ctrl->debug) pri_message(ctrl, "Received ARINC 746 ECL Equipment Control Message\n");
 		return arinc_handle_ecl(link, (arinc_q931_h *) h, len);
 		break;
 	case MAINTENANCE_PROTOCOL_DISCRIMINATOR_1:
