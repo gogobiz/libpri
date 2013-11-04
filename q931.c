@@ -8860,9 +8860,9 @@ int arinc_handle_ecl(struct q921_link *link, arinc_q931_h *h, int len)
 
 	
 	if (ctrl->debug) {
-		pri_message(ctrl, "Processing ARINC Q931 Receive ECL with protocol discriminator %i with length of %i\n", h->pd, len);
+		//pri_message(ctrl, "Processing ARINC Q931 Receive ECL with protocol discriminator %i with length of %i\n", h->pd, len);
 		// pri_message(ctrl, "Message handler is set to type %i\n", mh->msg);
-		arinc_q931_dump(ctrl, link->tei, h, len, 0);
+		//arinc_q931_dump(ctrl, link->tei, h, len, 0);
 	}
 
 
@@ -8906,7 +8906,7 @@ int arinc_handle_ecl(struct q921_link *link, arinc_q931_h *h, int len)
 		break;
 */
         	case ARINC_EVENT_RESPONSE:
-			pri_message(ctrl, "ARINC: Event Response Received\n");
+			pri_message(ctrl, "ARINC: Event Response Received, but no handler available in library\n");
 		break;
 
 	}
@@ -9071,12 +9071,12 @@ int arinc_q931_add_ie(struct pri *ctrl, struct arinc_invocation *invocation,
 
 int arinc_q931_xmit(struct q921_link *link, arinc_q931_h *h, int len, int cr)
 {
-        	/* Q921 should have the SAPI = 2 context so this is okay */
+        /* Q921 should have the SAPI = 2 context so this is okay */
         struct pri *ctrl;
        	ctrl= link->ctrl;
 
 	if (ctrl->debug) 
-		pri_message(ctrl, "Attempt to xmit\n");
+		pri_message(ctrl, "ARINC: Attempt to q931_xmit back through to the a921 layer\n");
 
         arinc_q921_transmit_iframe(link, h, len, cr);
 

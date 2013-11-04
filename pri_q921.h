@@ -198,6 +198,19 @@ typedef enum q921_state {
 	Q921_TIMER_RECOVERY = 8,
 } q921_state;
 
+// TODO- delete this completely
+typedef enum arinc_q921_state {
+	/* All states except Q921_DOWN are defined in Q.921 SDL diagrams */
+	ARINC_Q921_TEI_UNASSIGNED = 1,
+	ARINC_Q921_ASSIGN_AWAITING_TEI = 2,
+	ARINC_Q921_ESTABLISH_AWAITING_TEI = 3,
+	ARINC_Q921_TEI_ASSIGNED = 4,
+	ARINC_Q921_AWAITING_ESTABLISHMENT = 5,
+	ARINC_Q921_AWAITING_RELEASE = 6,
+	ARINC_Q921_MULTI_FRAME_ESTABLISHED = 7,
+	ARINC_Q921_TIMER_RECOVERY = 8,
+} arinc_q921_state;
+
 /*! TEI identity check procedure states. */
 enum q921_tei_check_state {
 	/*! Not participating in the TEI check procedure. */
@@ -229,8 +242,14 @@ struct q921_link {
 	/*! Q.921 Re-transmission queue */
 	struct q921_frame *tx_queue;
 
+	/*! Q.921 Re-transmission queue */
+	struct q921_frame *arinc_tx_queue;
+
 	/*! Q.921 State */
 	enum q921_state state;
+
+	/*! ARINC Q.921 State */
+	enum q921_state arinc_state;
 
 	/*! TEI identity check procedure state. */
 	enum q921_tei_check_state tei_check;
@@ -271,18 +290,38 @@ struct q921_link {
 	/*! Layer 2 persistence restart delay timer */
 	int restart_timer;
 
+	/*! arinc T-200 retransmission timer */
+	int arinc_t200_timer;
+	/*! ARINC Retry Count (T200) */
+	int arinc_RC;
+	int arinc_t202_timer;
+	int arinc_n202_counter;
+	/*! Max idle time */
+	int arinc_t203_timer;
+	/*! PTP restart delay timer */
+	int arinc_restart_timer;
+
+
 	/* MDL variables */
 	int mdl_timer;
 	int mdl_error;
 	unsigned int mdl_free_me:1;
 
+	/* ARINC MDL variables */
+	int arinc_mdl_timer;
+	int arinc_mdl_error;
+	unsigned int arinc_mdl_free_me:1;
+
 	unsigned int peer_rx_busy:1;
 	unsigned int own_rx_busy:1;
+	unsigned int arinc_peer_rx_busy:1;
+	unsigned int arinc_own_rx_busy:1;
 	unsigned int arinc_acknowledge_pending:1;
 	unsigned int acknowledge_pending:1;
 	unsigned int reject_exception:1;
 	unsigned int arinc_reject_exception:1;
 	unsigned int l3_initiated:1;
+	unsigned int arinc_l3_initiated:1;
 };
 
 static inline int Q921_ADD(int a, int b)

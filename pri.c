@@ -188,12 +188,13 @@ static void arinc_default_timers(struct pri *ctrl, int switchtype)
 		ctrl->arinc_timers[ARINC_TIMER_K] = 7;			/* Max number of outstanding I-frames */
 	}
 
-	ctrl->arinc_timers[ARINC_TIMER_T200] = 1000;		/* Time between SABME's */
-	// ctrl->arinc_timers[ARINC_TIMER_T201] = ctrl->arinc_timers[ARINC_TIMER_T200];/* Time between TEI Identity Checks (Default same as T200) */
+	// ctrl->arinc_timers[ARINC_TIMER_T200] = 1000;		/* Time between SABME's */
+ 	ctrl->arinc_timers[ARINC_TIMER_T200] = 3000;		/* Time between SABME's */	// ctrl->arinc_timers[ARINC_TIMER_T201] = ctrl->arinc_timers[ARINC_TIMER_T200];/* Time between TEI Identity Checks (Default same as T200) */
 	ctrl->arinc_timers[ARINC_TIMER_T202] = 10 * 1000;	/* Min time between transmission of TEI Identity request messages */
-	ctrl->arinc_timers[ARINC_TIMER_T203] = 10 * 1000;	/* Max time without exchanging packets */
+	// ctrl->arinc_timers[ARINC_TIMER_T203] = 10 * 1000;	/* Max time without exchanging packets */
+	ctrl->arinc_timers[ARINC_TIMER_T203] = 30 * 1000;	/* Max time without exchanging packets */	
 
-	// TODO: FIX THIS TO USE ARINC TIMER ctrl->arinc_timers[ARINC_TIMER_T303] = 4 * 1000;	/* Length between SETUP retransmissions and timeout */
+// TODO: FIX THIS TO USE ARINC TIMER ctrl->arinc_timers[ARINC_TIMER_T303] = 4 * 1000;	/* Length between SETUP retransmissions and timeout */
 	//ctrl->arinc_timers[ARINC_TIMER_T303] = 11 * 1000;	/* Length between SETUP retransmissions and timeout */
 	ctrl->arinc_timers[ARINC_TIMER_T305] = 30 * 1000;	/* Wait for DISCONNECT acknowledge */
 	ctrl->arinc_timers[ARINC_TIMER_T308] = 4 * 1000;	/* Wait for RELEASE acknowledge */
@@ -236,9 +237,9 @@ static void pri_default_timers(struct pri *ctrl, int switchtype)
 	ctrl->timers[PRI_TIMER_T203] = 10 * 1000;	/* Max time without exchanging packets */
 
 	// TODO: FIX THIS TO USE ARINC TIMER ctrl->timers[PRI_TIMER_T303] = 4 * 1000;	/* Length between SETUP retransmissions and timeout */
- +	ctrl->timers[PRI_TIMER_T303] = 11 * 1000;	/* Length between SETUP retransmissions and timeout */	ctrl->timers[PRI_TIMER_T305] = 30 * 1000;	/* Wait for DISCONNECT acknowledge */
+	ctrl->timers[PRI_TIMER_T303] = 11 * 1000;	/* Length between SETUP retransmissions and timeout */	ctrl->timers[PRI_TIMER_T305] = 30 * 1000;	/* Wait for DISCONNECT acknowledge */
 	ctrl->timers[PRI_TIMER_T308] = 4 * 1000;	/* Wait for RELEASE acknowledge */
-	ctrl->timers[PRI_TIMER_T309] = 6 * 1000;	/* Time to wait before clearing calls in case of D-channel transient event.  Q.931 specifies 6-90 seconds */
+	ctrl->timers[PRI_TIMER_T309] = 90 * 1000;	/* Time to wait before clearing calls in case of D-channel transient event.  Q.931 specifies 6-90 seconds */
 	ctrl->timers[PRI_TIMER_T312] = (4 + 2) * 1000;/* Supervise broadcast SETUP message call reference retention. T303 + 2 seconds */
 	ctrl->timers[PRI_TIMER_T313] = 4 * 1000;	/* Wait for CONNECT acknowledge, CPE side only */
 #if 0	/* Default disable the T316 timer otherwise the user cannot disable it. */
@@ -852,6 +853,19 @@ pri_event *pri_check_event(struct pri *pri)
 	return e;
 }
 
+pri_event *arinc_check_event(struct pri *pri)
+{
+        char buf[1024];
+        int res;
+        pri_event *e;
+        res = pri->read_func ? pri->read_func(pri, buf, sizeof(buf)) : 0;
+        if (!res)
+                return NULL;
+        /* Receive the q921 packet */
+        e = q921_receive(pri, (q921_h *)buf, res);
+        return e;
+}
+
 static int wait_pri(struct pri *pri)
 {	
 	struct timeval *tv, real;
@@ -891,26 +905,39 @@ pri_event *pri_mkerror(struct pri *pri, char *errstr)
 pri_event *pri_dchannel_run(struct pri *pri, int block)
 {
 	pri_event *e;
+	pri_event *f;
 	int res;
 	if (!pri)
 		return NULL;
 	if (block) {
 		do {
 			e =  NULL;
+			f =  NULL;
 			res = wait_pri(pri);
 			/* Check for error / interruption */
 			if (res < 0)
 				return NULL;
-			if (!res)
+			if (!res) {
 				e = pri_schedule_run(pri);
-			else
+					pri_message(pri, "PRI MAIN EVENT from %s scheduling arinc scheduler run.\n", __func__);
+				f = arinc_schedule_run(pri);
+			}
+			else {
+				pri_message(pri, "PRI MAIN EVENT from %s scheduling arinc scheduler run.\n", __func__);
+				f = arinc_check_event(pri);
 				e = pri_check_event(pri);
-		} while(!e);
+			}
+		} while(!e || !f);
 	} else {
+		pri_message(pri, "PRI MAIN EVENT from %s scheduling RUNNING NON-BLOCKING.\n", __func__);
 		e = pri_check_event(pri);
 		return e;
 	}
-	return e;
+	pri_message(pri, "PRI MAIN EVENT from %s returning pri_event!!!\n", __func__);
+	if ( e != NULL )
+		return e;
+	else
+		return f;
 }
 
 void pri_set_debug(struct pri *pri, int debug)
