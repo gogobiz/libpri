@@ -331,6 +331,7 @@ static inline int Q921_ADD(int a, int b)
 
 /* Dumps a *known good* Q.921 packet */
 extern void q921_dump(struct pri *pri, q921_h *h, int len, int debugflags, int txrx);
+extern void arinc_q921_dump(struct pri *pri, q921_h *h, int len, int showraw, int txrx);
 
 /* Bring up the D-channel */
 void q921_start(struct q921_link *link);

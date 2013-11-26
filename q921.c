@@ -70,12 +70,14 @@
 	*/
 
 static void q921_dump_pri(struct q921_link *link, char direction_tag);
+static void arinc_q921_dump_pri(struct q921_link *link, char direction_tag);
 static void q921_establish_data_link(struct q921_link *link);
 static void arinc_q921_establish_data_link(struct q921_link *link);
 static void q921_mdl_error(struct q921_link *link, char error);
+static void arinc_q921_mdl_error(struct q921_link *link, char error);
 static void q921_mdl_remove(struct q921_link *link);
 static void q921_mdl_destroy(struct q921_link *link);
-static void arinc_q921_mdl_error(struct q921_link *link, char error);
+
 // static void arinc_q921_mdl_remove(struct q921_link *link);
 // static void arinc_q921_mdl_destroy(struct q921_link *link);
 
@@ -264,6 +266,38 @@ static void q921_discard_iqueue(struct q921_link *link)
 	link->tx_queue = NULL;
 }
 
+static int arinc_q921_transmit(struct pri *ctrl, q921_h *h, int len) 
+{
+	int res;
+
+	if (ctrl->debug)
+		pri_message(ctrl, "Got to arinc_q921_transmit for a frame of length %d", len);
+
+#ifdef RANDOM_DROPS
+	if (!(random() % 3)) {
+		pri_message(ctrl, " === Dropping Packet ===\n");
+		return 0;
+	}
+#endif
+	ctrl->q921_txcount++;
+	/* Just send it raw */
+	if (ctrl->debug & (PRI_DEBUG_Q921_DUMP | PRI_DEBUG_Q921_RAW))
+		arinc_q921_dump(ctrl, h, len, ctrl->debug & PRI_DEBUG_Q921_RAW, 1);
+	/* Write an extra two bytes for the FCS */
+	res = ctrl->write_func ? ctrl->write_func(ctrl, h, len + 2) : 0;
+	if (res != (len + 2)) {
+		pri_error(ctrl, "Short write: %d/%d (%s)\n", res, len + 2, strerror(errno));
+		return -1;
+	}
+
+	if (ctrl->debug)
+		pri_message(ctrl, "At end of arinc_q921_transmit and we believe we have a return result of %d\n", res);
+
+	return 0;
+}
+
+  
+
 static int q921_transmit(struct pri *ctrl, q921_h *h, int len) 
 {
 	int res;
@@ -419,7 +453,7 @@ static void arinc_q921_send_dm(struct q921_link *link, int fbit)
 	ctrl = link->ctrl;
 
 	Q921_INIT(link, h);
-	h.h.sapi = 2; //TODO: equipment congtrol
+	h.h.sapi = ARINC_SAPI_EQMTCTRL;
 	h.u.m3 = 0;	/* M3 = 0 */
 	h.u.m2 = 3;	/* M2 = 3 */
 	h.u.p_f = fbit;	/* Final set appropriately */
@@ -438,10 +472,38 @@ static void arinc_q921_send_dm(struct q921_link *link, int fbit)
 	if (ctrl->debug & PRI_DEBUG_Q921_STATE) {
 		pri_message(ctrl, "ARINC TEI=%d Sending DM\n", link->tei);
 	}
-	q921_transmit(ctrl, &h, 4);
+	arinc_q921_transmit(ctrl, &h, 4);
 }
 
+static void arinc_q921_send_disc(struct q921_link *link, int pbit)
+{
+	q921_h h;
+	struct pri *ctrl;
 
+	ctrl = link->ctrl;
+
+	Q921_INIT(link, h);
+	h.h.sapi = ARINC_SAPI_EQMTCTRL;
+	h.u.m3 = 2;	/* M3 = 2 */
+	h.u.m2 = 0;	/* M2 = 0 */
+	h.u.p_f = pbit;	/* Poll set appropriately */
+	h.u.ft = Q921_FRAMETYPE_U;
+	switch (ctrl->localtype) {
+	case PRI_NETWORK:
+		h.h.c_r = 0;
+		break;
+	case PRI_CPE:
+		h.h.c_r = 1;
+		break;
+	default:
+		pri_error(ctrl, "Don't know how to DISC on a type %d node\n", ctrl->localtype);
+		return;
+	}
+	if (ctrl->debug & PRI_DEBUG_Q921_STATE) {
+		pri_message(ctrl, "ARINC TEI=%d Sending DISC\n", link->tei);
+	}
+	arinc_q921_transmit(ctrl, &h, 4);
+}
 
 static void q921_send_disc(struct q921_link *link, int pbit)
 {
@@ -509,6 +571,7 @@ static void arinc_q921_send_sabme(struct q921_link *link)
 	ctrl = link->ctrl;
 
 	Q921_INIT(link, h);
+	h.h.sapi = ARINC_SAPI_EQMTCTRL;
 	h.u.m3 = 3;	/* M3 = 3 */
 	h.u.m2 = 3;	/* M2 = 3 */
 	h.u.p_f = 1;	/* Poll bit set */
@@ -527,7 +590,8 @@ static void arinc_q921_send_sabme(struct q921_link *link)
 	if (ctrl->debug & PRI_DEBUG_Q921_STATE) {
 		pri_message(ctrl, "ARINC TEI=%d Sending SABME\n", link->tei);
 	}
-	q921_transmit(ctrl, &h, 3);}
+	arinc_q921_transmit(ctrl, &h, 3);
+}
 
 static void arinc_q921_send_ua(struct q921_link *link, int fbit)
 {
@@ -556,7 +620,7 @@ static void arinc_q921_send_ua(struct q921_link *link, int fbit)
         if (ctrl->debug & PRI_DEBUG_Q921_STATE) {
                 pri_message(ctrl, "TEI=%d Sending UA\n", link->tei);
         }
-        q921_transmit(ctrl, &h, 3);
+        arinc_q921_transmit(ctrl, &h, 3);
 }
 
 static void q921_send_sabme(struct q921_link *link)
@@ -707,7 +771,7 @@ static void arinc_reschedule_t200(struct q921_link *link)
 		pri_message(ctrl, "-- Restarting ARINC T200 timer\n");
 
 	arinc_schedule_del(ctrl, link->arinc_t200_timer);
-	link->arinc_t200_timer = arinc_schedule_event(ctrl, ctrl->timers[PRI_TIMER_T200], t200_expire, link);
+	link->arinc_t200_timer = arinc_schedule_event(ctrl, ctrl->timers[PRI_TIMER_T200], arinc_t200_expire, link);
 }
 
 
@@ -788,7 +852,7 @@ static void arinc_stop_t203(struct q921_link *link)
 		link->arinc_t203_timer = 0;
 	} else {
 		if (ctrl->debug & PRI_DEBUG_Q921_DUMP)
-			pri_message(ctrl, "-- ARINCT203 requested t o stop when not started\n");
+			pri_message(ctrl, "-- ARINC T203 requested to stop when not started\n");
 	}
 }
 
@@ -1237,7 +1301,7 @@ static int arinc_q921_send_queued_iframes(struct q921_link *link)
 		f->h.n_r = link->arinc__v_r;
 		f->h.ft = 0;
 		f->h.p_f = 0;
-		q921_transmit(ctrl, (q921_h *) (&f->h), f->len);
+		arinc_q921_transmit(ctrl, (q921_h *) (&f->h), f->len);
 		// TODO: ARINC Q921_INC(link->v_s); - NO - do not actually need this JE
 		Q921_INC(link->arinc__v_s);
 		++frames_txd;
@@ -1409,6 +1473,7 @@ static void arinc_q921_reject(struct q921_link *link, int pf)
 	ctrl = link->ctrl;
 
 	Q921_INIT(link, h);
+	h.h.sapi = ARINC_SAPI_EQMTCTRL
 	h.s.x0 = 0;	/* Always 0 */
 	h.s.ss = 2;	/* Reject */
 	h.s.ft = 1;	/* Frametype (01) */
@@ -1428,7 +1493,7 @@ static void arinc_q921_reject(struct q921_link *link, int pf)
 	if (ctrl->debug & PRI_DEBUG_Q921_STATE) {
 		pri_message(ctrl, "ARINC TEI=%d Sending REJ N(R)=%d\n", link->tei, link->arinc__v_r);
 	}
-	q921_transmit(ctrl, &h, 4);
+	arinc_q921_transmit(ctrl, &h, 4);
 }
 
 
@@ -1537,7 +1602,7 @@ static void arinc_q921_rr(struct q921_link *link, int pbit, int cmd)
                 pri_message(ctrl, "ARINC TEI=%d Sending RR N(R)=%d\n", link->tei, link->arinc__v_r);
         }
 #endif
-        q921_transmit(ctrl, &h, 4);
+        arinc_q921_transmit(ctrl, &h, 4);
 }
 
 
@@ -1699,7 +1764,7 @@ static void arinc_t200_expire(void *vlink)
 	case Q921_AWAITING_RELEASE:
 		if (link->arinc_RC != ctrl->timers[PRI_TIMER_N200]) {
 			++link->arinc_RC;
-			q921_send_disc(link, 1); // This appears to be identical to standard Q921, so no mod needed
+			arinc_q921_send_disc(link, 1); 
 			arinc_start_t200(link);
 		} else {
 			arinc_q921_ptp_delay_restart(link);
@@ -2079,7 +2144,7 @@ static void arinc_t203_expire(void *vlink)
 
 	switch (link->arinc_state) {
 	case ARINC_Q921_MULTI_FRAME_ESTABLISHED:
-		transmit_enquiry(link);
+		arinc_transmit_enquiry(link);
 		link->arinc_RC = 0;
 		arinc_q921_setstate(link, Q921_TIMER_RECOVERY);
 		break;
@@ -2134,6 +2199,159 @@ static void q921_dump_iqueue_info(struct q921_link *link)
 }
 
 static void q921_dump_pri_by_h(struct pri *ctrl, char direction_tag, q921_h *h);
+static void arinc_q921_dump_pri_by_h(struct pri *ctrl, char direction_tag, q921_h *h);
+
+void arinc_q921_dump(struct pri *ctrl, q921_h *h, int len, int showraw, int txrx)
+{
+	int x;
+	const char *type;
+	char direction_tag;
+	
+	direction_tag = txrx ? '>' : '<';
+
+	pri_message(ctrl, "\n");
+	arinc_q921_dump_pri_by_h(ctrl, direction_tag, h);
+
+	if (showraw) {
+		char *buf = malloc(len * 3 + 1);
+		int buflen = 0;
+		if (buf) {
+			for (x=0;x<len;x++) 
+				buflen += sprintf(buf + buflen, "%02x ", h->raw[x]);
+			pri_message(ctrl, "%c [ %s]\n", direction_tag, buf);
+			free(buf);
+		}
+	}
+
+	switch (h->h.data[0] & Q921_FRAMETYPE_MASK) {
+	case 0:
+	case 2:
+		pri_message(ctrl, "%c Informational frame:\n", direction_tag);
+		break;
+	case 1:
+		pri_message(ctrl, "%c Supervisory frame:\n", direction_tag);
+		break;
+	case 3:
+		pri_message(ctrl, "%c Unnumbered frame:\n", direction_tag);
+		break;
+	}
+	
+	pri_message(ctrl, "%c SAPI: %02d  C/R: %d EA: %d\n",
+		direction_tag,
+		h->h.sapi, 
+		h->h.c_r,
+		h->h.ea1);
+	pri_message(ctrl, "%c  TEI: %03d        EA: %d\n", 
+		direction_tag,
+		h->h.tei,
+		h->h.ea2);
+
+	switch (h->h.data[0] & Q921_FRAMETYPE_MASK) {
+	case 0:
+	case 2:
+		/* Informational frame */
+		pri_message(ctrl, "%c N(S): %03d   0: %d\n",
+			direction_tag,
+			h->i.n_s,
+			h->i.ft);
+		pri_message(ctrl, "%c N(R): %03d   P: %d\n",
+			direction_tag,
+			h->i.n_r,
+			h->i.p_f);
+		pri_message(ctrl, "%c %d bytes of data\n",
+			direction_tag,
+			len - 4);
+		break;
+	case 1:
+		/* Supervisory frame */
+		type = "???";
+		switch (h->s.ss) {
+		case 0:
+			type = "RR (receive ready)";
+			break;
+		case 1:
+			type = "RNR (receive not ready)";
+			break;
+		case 2:
+			type = "REJ (reject)";
+			break;
+		}
+		pri_message(ctrl, "%c Zero: %d     S: %d 01: %d  [ %s ]\n",
+			direction_tag,
+			h->s.x0,
+			h->s.ss,
+			h->s.ft,
+			type);
+		pri_message(ctrl, "%c N(R): %03d P/F: %d\n",
+			direction_tag,
+			h->s.n_r,
+			h->s.p_f);
+		pri_message(ctrl, "%c %d bytes of data\n",
+			direction_tag,
+			len - 4);
+		break;
+	case 3:		
+		/* Unnumbered frame */
+		type = "???";
+		if (h->u.ft == 3) {
+			switch (h->u.m3) {
+			case 0:
+				if (h->u.m2 == 3)
+					type = "DM (disconnect mode)";
+				else if (h->u.m2 == 0)
+					type = "UI (unnumbered information)";
+				break;
+			case 2:
+				if (h->u.m2 == 0)
+					type = "DISC (disconnect)";
+				break;
+			case 3:
+				if (h->u.m2 == 3)
+					type = "SABME (set asynchronous balanced mode extended)";
+				else if (h->u.m2 == 0)
+					type = "UA (unnumbered acknowledgement)";
+				break;
+			case 4:
+				if (h->u.m2 == 1)
+					type = "FRMR (frame reject)";
+				break;
+			case 5:
+				if (h->u.m2 == 3)
+					type = "XID (exchange identification note)";
+				break;
+			default:
+				break;
+			}
+		}
+		pri_message(ctrl, "%c   M3: %d   P/F: %d M2: %d 11: %d  [ %s ]\n",
+			direction_tag,
+			h->u.m3,
+			h->u.p_f,
+			h->u.m2,
+			h->u.ft,
+			type);
+		pri_message(ctrl, "%c %d bytes of data\n",
+			direction_tag,
+			len - 3);
+		break;
+	}
+
+	if ((h->u.ft == 3) && (h->u.m3 == 0) && (h->u.m2 == 0) && (h->u.data[0] == 0x0f)) {
+		int ri;
+		u_int8_t *action;
+
+		/* TEI management related */
+		type = q921_tei_mgmt2str(h->u.data[3]);
+		pri_message(ctrl, "%c MDL Message: %d(%s)\n", direction_tag, h->u.data[3], type);
+		ri = (h->u.data[1] << 8) | h->u.data[2];
+		pri_message(ctrl, "%c Ri: %d\n", direction_tag, ri);
+		action = &h->u.data[4];
+		for (x = len - (action - (u_int8_t *) h); 0 < x; --x, ++action) {
+			pri_message(ctrl, "%c Ai: %d E:%d\n",
+				direction_tag, (*action >> 1) & 0x7f, *action & 0x01);
+		}
+	}
+}
 
 void q921_dump(struct pri *ctrl, q921_h *h, int len, int debugflags, int txrx)
 {
@@ -2308,6 +2526,23 @@ static void q921_dump_pri(struct q921_link *link, char direction_tag)
 		direction_tag, link->t200_timer, ctrl->timers[PRI_TIMER_N200], link->t203_timer);
 }
 
+static void arinc_q921_dump_pri(struct q921_link *link, char direction_tag)
+{
+	struct pri *ctrl;
+
+	ctrl = link->ctrl;
+
+	pri_message(ctrl, "%c TEI: %d State %d(%s)\n",
+		direction_tag, link->tei, link->arinc_state, q921_state2str(link->arinc_state));
+	pri_message(ctrl, "%c V(A)=%d, V(S)=%d, V(R)=%d\n",
+		direction_tag, link->arinc__v_a, link->arinc__v_s, link->arinc__v_r);
+	pri_message(ctrl, "%c K=%d, RC=%d, l3_initiated=%d, reject_except=%d, ack_pend=%d\n",
+		direction_tag, ctrl->timers[PRI_TIMER_K], link->arinc_RC, link->arinc_l3_initiated,
+		link->arinc_reject_exception, link->arinc_acknowledge_pending);
+	pri_message(ctrl, "%c T200_id=%d, N200=%d, T203_id=%d\n",
+		direction_tag, link->arinc_t200_timer, ctrl->timers[PRI_TIMER_N200], link->arinc_t203_timer);
+}
+
 static void q921_dump_pri_by_h(struct pri *ctrl, char direction_tag, q921_h *h)
 {
 	struct q921_link *link;
@@ -2331,6 +2566,32 @@ static void q921_dump_pri_by_h(struct pri *ctrl, char direction_tag, q921_h *h)
 		pri_message(ctrl, "%c Link not found for this frame.\n", direction_tag);
 	}
 }
+
+static void arinc_q921_dump_pri_by_h(struct pri *ctrl, char direction_tag, q921_h *h)
+{
+	struct q921_link *link;
+
+	if (!ctrl) {
+		return;
+	}
+
+	if (BRI_NT_PTMP(ctrl)) {
+		link = pri_find_tei(ctrl, h->h.sapi, h->h.tei);
+	} else if (BRI_TE_PTMP(ctrl)) {
+		/* We're operating on the specific TEI link */
+		link = ctrl->link.next;
+	} else {
+		link = &ctrl->link;
+	}
+
+	if (link) {
+		arinc_q921_dump_pri(link, direction_tag);
+	} else {
+		pri_message(ctrl, "%c Link not found for this frame.\n", direction_tag);
+	}
+}
+
+
 
 #define Q921_TEI_CHECK_MAX_POLLS	2
 
@@ -4488,7 +4749,7 @@ static pri_event *arinc_q921_iframe_rx(struct q921_link *link, q921_h *h, int le
 		} else if (h->i.n_s == link->arinc__v_r) {
 
 			Q921_INC(link->arinc__v_r);
-			if (ctrl->debug) pri_message(ctrl, "ARINC in %s and incrementing v_r counter to %d\n", __func__, link->arinc__v_r);
+			if (ctrl->debug) pri_message(ctrl, "ARINC in %s and incrementing arinc__v_r counter to %d\n", __func__, link->arinc__v_r);
 			link->arinc_reject_exception = 0;
 
 			/*
