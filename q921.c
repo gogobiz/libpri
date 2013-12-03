@@ -3123,7 +3123,7 @@ static pri_event *arinc_q921_sabme_rx(struct q921_link *link, q921_h *h)
 		if (ctrl->debug)
 			pri_message(ctrl, "ARINC in sabme_rx in state %s and resetting arinc__v_s and arinc__v_r to 0\n", q921_state2str(link->arinc_state));
 
-		link->arinc__v_s = link->arinc__v_r = 0;
+		link->arinc__v_s = link->arinc__v_a = link->arinc__v_r = 0;
 
 		arinc_q921_setstate(link, Q921_MULTI_FRAME_ESTABLISHED);
 		if (arinc_delay_q931_dl_event != Q931_DL_EVENT_NONE) {
@@ -3157,8 +3157,8 @@ static pri_event *arinc_q921_sabme_rx(struct q921_link *link, q921_h *h)
 	case Q921_AWAITING_ESTABLISHMENT:
 		arinc_q921_send_ua(link, h->u.p_f);
 
-		// Josh Mod here to force UP link on established send
-		// arinc_start_t203(link);
+		// TODO: Josh Mod here to force UP link on established send
+		 arinc_start_t203(link); // TODO: IS this correct?
 		arinc_q921_setstate(link, Q921_MULTI_FRAME_ESTABLISHED);
 
 		break;
@@ -3998,10 +3998,10 @@ static void arinc_q921_enquiry_response(struct q921_link *link)
 {
         struct pri *ctrl;
 
-        if (link->own_rx_busy) {
+        if (link->arinc_own_rx_busy) {
                 /* XXX : TODO later sometime */
                 ctrl = link->ctrl;
-                pri_error(ctrl, "Implement me %s: own_rx_busy\n", __FUNCTION__);
+                pri_error(ctrl, "Implement me %s: arinc_own_rx_busy\n", __FUNCTION__);
                 //q921_rnr(link);
         } else {
 		ctrl = link->ctrl;
@@ -4174,7 +4174,7 @@ static pri_event *arinc_timer_recovery_rr_rej_rx(struct q921_link *link, q921_h 
 	ctrl = link->ctrl;
 
 	/* Figure B.7/Q.921 Page 74 */
-	link->peer_rx_busy = 0;
+	link->arinc_peer_rx_busy = 0;
 
 	if (is_command(ctrl, h)) {
 		if (h->s.p_f) {
@@ -4744,7 +4744,7 @@ static pri_event *arinc_q921_iframe_rx(struct q921_link *link, q921_h *h, int le
 		arinc_delay_q931_receive = 0;
 		/* FIXME: Verify that it's a command ... */
 		if (link->arinc_own_rx_busy) {
-			if (ctrl->debug) pri_message(ctrl, "ARINC own rx busy: %d\n", link->own_rx_busy);
+			if (ctrl->debug) pri_message(ctrl, "ARINC own rx busy: %d\n", link->arinc_own_rx_busy);
 			/* DEVIATION: Handle own rx busy */
 		} else if (h->i.n_s == link->arinc__v_r) {
 
@@ -4947,7 +4947,7 @@ static pri_event *arinc_q921_dm_rx(struct q921_link *link, q921_h *h)
 
 		/* DL-RELEASE indication */
 		q931_dl_event(link, Q931_DL_EVENT_DL_RELEASE_IND);
-		stop_t200(link);
+		arinc_stop_t200(link);
 		arinc_q921_setstate(link, Q921_TEI_ASSIGNED);
 		break;
 	case Q921_AWAITING_RELEASE:
@@ -4956,7 +4956,7 @@ static pri_event *arinc_q921_dm_rx(struct q921_link *link, q921_h *h)
 		res = q921_ptp_delay_restart(link);
 		/* DL-RELEASE confirm */
 		q931_dl_event(link, Q931_DL_EVENT_DL_RELEASE_CONFIRM);
-		stop_t200(link);
+		arinc_stop_t200(link);
 		arinc_q921_setstate(link, Q921_TEI_ASSIGNED);
 		break;
 	case Q921_MULTI_FRAME_ESTABLISHED:
