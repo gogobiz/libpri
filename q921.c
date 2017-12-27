@@ -452,7 +452,7 @@ static void arinc_q921_send_dm(struct q921_link *link, int fbit)
 
 	ctrl = link->ctrl;
 
-	Q921_INIT(link, h);
+	Q921_INIT(&h, link->sapi, link->tei);
 	h.h.sapi = ARINC_SAPI_EQMTCTRL;
 	h.u.m3 = 0;	/* M3 = 0 */
 	h.u.m2 = 3;	/* M2 = 3 */
@@ -482,7 +482,7 @@ static void arinc_q921_send_disc(struct q921_link *link, int pbit)
 
 	ctrl = link->ctrl;
 
-	Q921_INIT(link, h);
+	Q921_INIT(&h, link->sapi, link->tei);
 	h.h.sapi = ARINC_SAPI_EQMTCTRL;
 	h.u.m3 = 2;	/* M3 = 2 */
 	h.u.m2 = 0;	/* M2 = 0 */
@@ -570,7 +570,7 @@ static void arinc_q921_send_sabme(struct q921_link *link)
 
 	ctrl = link->ctrl;
 
-	Q921_INIT(link, h);
+	Q921_INIT(&h, link->sapi, link->tei);
 	h.h.sapi = ARINC_SAPI_EQMTCTRL;
 	h.u.m3 = 3;	/* M3 = 3 */
 	h.u.m2 = 3;	/* M2 = 3 */
@@ -600,7 +600,7 @@ static void arinc_q921_send_ua(struct q921_link *link, int fbit)
 
 	ctrl = link->ctrl;
 
-	Q921_INIT(link, h);
+	Q921_INIT(&h, link->sapi, link->tei);
 	h.h.sapi = ARINC_SAPI_EQMTCTRL; // TODO: ARINC SAPI;
         h.u.m3 = 3;             /* M3 = 3 */
         h.u.m2 = 0;             /* M2 = 0 */
@@ -1472,8 +1472,8 @@ static void arinc_q921_reject(struct q921_link *link, int pf)
 
 	ctrl = link->ctrl;
 
-	Q921_INIT(link, h);
-	h.h.sapi = ARINC_SAPI_EQMTCTRL
+	Q921_INIT(&h, link->sapi, link->tei);
+	h.h.sapi = ARINC_SAPI_EQMTCTRL;
 	h.s.x0 = 0;	/* Always 0 */
 	h.s.ss = 2;	/* Reject */
 	h.s.ft = 1;	/* Frametype (01) */
@@ -1572,7 +1572,7 @@ static void arinc_q921_rr(struct q921_link *link, int pbit, int cmd)
 
         ctrl = link->ctrl;
 
-        Q921_INIT(link, h);
+        Q921_INIT(&h, link->sapi, link->tei);
         h.h.sapi = ARINC_SAPI_EQMTCTRL; // TODO: arinc-patch
         h.s.x0 = 0;     /* Always 0 */
         h.s.ss = 0; /* Receive Ready */
@@ -2025,7 +2025,7 @@ int arinc_q921_transmit_iframe(struct q921_link *link, void *buf, int len, int c
 
                 f = calloc(1, sizeof(struct q921_frame) + len + 2);
                 if (f) {
-                        Q921_INIT(link, f->h);
+                        Q921_INIT(&(f->h), link->sapi, link->tei);
 			f->h.h.sapi = ARINC_SAPI_EQMTCTRL; // TODO: Send a SAPI 2 frame
                         switch (ctrl->localtype) {
                         case PRI_NETWORK:
@@ -3025,6 +3025,14 @@ static void q921_clear_exception_conditions(struct q921_link *link)
 	link->peer_rx_busy = 0;
 	link->reject_exception = 0;
 	link->acknowledge_pending = 0;
+}
+
+static void arinc_q921_clear_exception_conditions(struct q921_link *link)
+{
+	link->arinc_own_rx_busy = 0;
+	link->arinc_peer_rx_busy = 0;
+	link->arinc_reject_exception = 0;
+	link->arinc_acknowledge_pending = 0;
 }
 
 static pri_event *q921_sabme_rx(struct q921_link *link, q921_h *h)
@@ -4030,12 +4038,8 @@ static void arinc_n_r_error_recovery(struct q921_link *link)
 	if (ctrl->debug)
 		pri_message(ctrl, "ARINC entering n_r error recovery mode and resetting l3 link");
   
- -	q921_establish_data_link(link);
 	arinc_q921_mdl_error(link, 'J');
-  
- -	link->l3_initiated = 0;
 	arinc_q921_establish_data_link(link);
-
 	link->arinc_l3_initiated = 0;
   }
 
@@ -4346,7 +4350,7 @@ static pri_event *arinc_q921_rr_rx(struct q921_link *link, q921_h *h)
                 break;
         default:
                 pri_error(ctrl, "Don't know what to do with RR in state %d(%s)\n",
-                        link->arinc_state, q921_state2str(arinc_link->state));
+                        link->arinc_state, q921_state2str(link->arinc_state));
                 break;
         }
 

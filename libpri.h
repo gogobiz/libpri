@@ -280,6 +280,7 @@
 #define PRI_CAUSE_INTERWORKING					127	/* !Q.SIG */
 
 /* Transmit capabilities */
+#define PRI_TRANS_CAP_SPEECH					0x0
 // [arinc patch: start]
 // Bearer capability speech is 1
 #define PRI_TRANS_CAP_ARINC_SPEECH				0x01
